@@ -119,6 +119,7 @@ def detect_gesture():
 
             # Get the index finger tip coordinates for each hand
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
             canvas_width = canvas.winfo_width()
             canvas_height = canvas.winfo_height()
 
@@ -137,12 +138,21 @@ def detect_gesture():
                     # Calculate center of the button
                     button_x = (button_bbox[0] + button_bbox[2]) / 2  
                     button_y = (button_bbox[1] + button_bbox[3]) / 2
-                    
                     hand_to_button_distance = np.sqrt((button_x - canvas_x) ** 2 + (button_y - canvas_y) ** 2)
 
                     # If hovering within a certain distance, change background color
                     if hand_to_button_distance < 50:
                         canvas.itemconfig(button, fill="cyan")
+
+                        # Check distance between index finger and middle finger
+                        middle_x = int(middle_tip.x * canvas_width)
+                        middle_y = int(middle_tip.y * canvas_height)
+                        distance_fingers = np.sqrt((middle_x - canvas_x) ** 2 + (middle_y - canvas_y) ** 2)
+
+                        # If fingers are close enough, trigger the button press
+                        if distance_fingers < 30:  # Adjust this threshold as needed
+                            show_submenu(option, button_x, button_y)
+
                     else:
                         canvas.itemconfig(button, fill="lightgray")
 
@@ -158,14 +168,20 @@ def detect_gesture():
             # Update volume text and circular indicator
             canvas.itemconfig(volume_text, text=f"Volume\n{current_volume}%")
             update_volume_indicator(current_volume)
-    # else:
-    #     print("No hand landmarks detected")
     
     # Display the frame with landmarks in OpenCV window
     cv2.imshow("Gesture Control", frame)
     cv2.waitKey(1)
     
     root.after(10, detect_gesture)
+
+def show_submenu(option, button_x, button_y):
+    # Display the selection text next to the button
+    selection_text = canvas.create_text(button_x + 60, button_y, text="selected", 
+                                         font=("Helvetica", 14), fill="yellow")
+    
+    # Set a timer to remove the text after a few seconds
+    root.after(2000, lambda: canvas.delete(selection_text))  # Adjust the time (3000 ms = 3 seconds)
 
 # Start gesture detection loop
 root.after(10, detect_gesture)
