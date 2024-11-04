@@ -1,7 +1,7 @@
+
 import customtkinter as ctk
 import cv2
 import mediapipe as mp
-import numpy as np
 import math
 from PIL import Image, ImageTk
 
@@ -11,13 +11,13 @@ hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_c
 mp_drawing = mp.solutions.drawing_utils
 
 # Initialize CustomTkinter GUI
-ctk.set_appearance_mode("light")  # Set light mode to match white background
+ctk.set_appearance_mode("light")
 root = ctk.CTk()
 root.title("Gesture-Based Radial Menu")
-root.geometry("500x500")
-root.configure(bg="white")  # Set background color to white
+root.geometry("500x600")  # Increased height to accommodate the selection panel below
+root.configure(bg="white")
 
-# Canvas for radial menu
+# Canvas for radial menu and selection panel
 canvas = ctk.CTkCanvas(root, width=500, height=500, bg="white", highlightthickness=0)
 canvas.pack()
 
@@ -30,6 +30,7 @@ options = [
     "lion.png", "monkey.png", "elephant.png", "lion.png"
 ]
 num_options = len(options)
+segment_angle = 360 / num_options
 
 # Load images for each segment and keep references
 icon_images = [ImageTk.PhotoImage(Image.open(icon_path).resize((40, 40))) for icon_path in options]
@@ -37,133 +38,215 @@ icon_images = [ImageTk.PhotoImage(Image.open(icon_path).resize((40, 40))) for ic
 # Draw segments for the radial menu
 segments = []
 for i in range(num_options):
-    start_angle = i * 360 / num_options
-    extent = 360 / num_options
-    # Create each segment as an arc (slice)
-    segment = canvas.create_arc(center_x - radius_outer, center_y - radius_outer,
-                                center_x + radius_outer, center_y + radius_outer,
-                                start=start_angle, extent=extent, fill="lightgray", outline="white", width=2)
+    start_angle = i * segment_angle
+    segment = canvas.create_arc(
+        center_x - radius_outer, center_y - radius_outer,
+        center_x + radius_outer, center_y + radius_outer,
+        start=start_angle, extent=segment_angle, fill="lightgray", outline="darkgray", width=2
+    )
     segments.append(segment)
 
     # Calculate icon position within each segment
-    angle_rad = math.radians(start_angle + extent / 2)
+    angle_rad = math.radians(start_angle + segment_angle / 2)
     icon_x = center_x + (radius_inner + (radius_outer - radius_inner) / 2) * math.cos(angle_rad)
     icon_y = center_y - (radius_inner + (radius_outer - radius_inner) / 2) * math.sin(angle_rad)
-
-    # Place icon at calculated position
     canvas.create_image(icon_x, icon_y, image=icon_images[i])
 
-# Central volume control with a circular indicator
+# Divider Circle (white ring) between volume and main sectors
+divider_radius = 75
+canvas.create_oval(
+    center_x - divider_radius, center_y - divider_radius,
+    center_x + divider_radius, center_y + divider_radius, fill="white",
+    outline="white", width=4
+)
+
+# Central volume control
 volume_radius = 50
 canvas.create_oval(center_x - volume_radius, center_y - volume_radius, 
                    center_x + volume_radius, center_y + volume_radius, 
                    fill="darkgray", outline="lightgray", width=2)
 volume_text = canvas.create_text(center_x, center_y, text="Volume\n62%", font=("Helvetica", 12, "bold"), fill="black")
 
-# Track the volume level and volume indicator arc ID
+# Initialize volume
 current_volume = 62
-volume_arc_id = None  # To keep track of the arc ID for the circular indicator
-
-# Function to update the volume indicator
-def update_volume_indicator(volume_level):
-    global volume_arc_id
-    # Clear the previous arc
-    if volume_arc_id:
-        canvas.delete(volume_arc_id)
-    
-    # Calculate angle based on volume
-    angle_end = (volume_level / 100) * 360
-    
-    # Draw new arc for the current volume level
-    volume_arc_id = canvas.create_arc(center_x - volume_radius, center_y - volume_radius, 
-                                      center_x + volume_radius, center_y + volume_radius,
-                                      start=0, extent=angle_end, style="arc", outline="cyan", width=6)
-
-# Initial volume display
-update_volume_indicator(current_volume)
-# Custom cursor icon
-cursor_icon = ImageTk.PhotoImage(Image.open("cursor-icon.png").resize((30, 30)))  # Load and resize cursor icon
-cursor = canvas.create_image(-100, -100, image=cursor_icon)  # Initially place cursor off-screen
 
 # Initialize OpenCV capture
 cap = cv2.VideoCapture(0)
-current_volume = 62
 
-# Function to update the volume display
-def update_volume_display(volume_level):
-    canvas.itemconfig(volume_label, text=f"Volume\n{volume_level}%")
+# Load the custom cursor icon
+cursor_icon = ImageTk.PhotoImage(Image.open("cursor-icon.png").resize((30, 30)))
+cursor = canvas.create_image(-100, -100, image=cursor_icon)  # Initially place cursor off-screen
 
-# Function to detect gestures and interact with radial menu
+# Global variable to track the last selected sector
+last_selected_sector = None
+selection_frame_count = 0  # Counter for stable selection
+
+# Selection panel items (initially hidden)
+selection_panel_items = []
+
+# Function to draw the selection panel as an extension of the selected segment, divided into three sections
+def draw_selection_panel(selected_option_index):
+    # Calculate the angle for the selected segment
+    start_angle = selected_option_index * segment_angle
+    extent = segment_angle
+
+    # Define outer radius for the extended segment
+    panel_radius_outer = radius_outer + 50  # Slightly larger than the main menu radius
+    panel_radius_inner = radius_inner / 2  # Smaller inner radius to avoid covering the main canvas
+
+    # Draw the extended portion of the selected segment as the selection panel, divided into three parts
+    sub_arc_extent = extent / 3  # Divide the arc into three equal parts
+    button_labels = ["Origin", "Info", "Sound"]
+
+    for i, label in enumerate(button_labels):
+        # Calculate the start angle for each sub-arc
+        sub_arc_start_angle = start_angle + i * sub_arc_extent
+
+        # Draw each sub-arc segment (without borders around each "button" section)
+        sub_arc = canvas.create_arc(
+            center_x - panel_radius_outer, center_y - panel_radius_outer,
+            center_x + panel_radius_outer, center_y + panel_radius_outer,
+            start=sub_arc_start_angle, extent=sub_arc_extent, fill="darkgray", outline="black", width=2
+        )
+
+        # Calculate the position for the label in the center of each sub-arc
+        label_angle = math.radians(sub_arc_start_angle + sub_arc_extent / 2)
+        label_x = center_x + (panel_radius_inner + (panel_radius_outer - panel_radius_inner) / 2) * math.cos(label_angle)
+        label_y = center_y - (panel_radius_inner + (panel_radius_outer - panel_radius_inner) / 2) * math.sin(label_angle)
+
+        # Add the label text at the center of each sub-arc
+        label_text = canvas.create_text(
+            label_x, label_y, text=label, font=("Helvetica", 10, "bold"), fill="black"
+        )
+
+        # Bind each sub-arc segment to a click event
+        def on_button_click(event, option=label):
+            print(f"{option} clicked for segment {selected_option_index + 1}")
+
+        # Make the sub-arc clickable by binding it to the event
+        canvas.tag_bind(sub_arc, "<Button-1>", on_button_click)
+
+    # Redraw all original segments to overlay and mask the inner part of the selection panel
+    for i in range(num_options):
+        segment_color = "lightgray" if i != selected_option_index else "darkgray"  # Highlight selected segment
+        segment_outline = "darkgray" if i != selected_option_index else "black"
+        
+        # Draw each segment
+        segment = canvas.create_arc(
+            center_x - radius_outer, center_y - radius_outer,
+            center_x + radius_outer, center_y + radius_outer,
+            start=i * segment_angle, extent=segment_angle, fill=segment_color, outline=segment_outline, width=2
+        )
+
+        # Draw the animal icon for each segment
+        angle_rad = math.radians(i * segment_angle + segment_angle / 2)
+        icon_x = center_x + (radius_inner + (radius_outer - radius_inner) / 2) * math.cos(angle_rad)
+        icon_y = center_y - (radius_inner + (radius_outer - radius_inner) / 2) * math.sin(angle_rad)
+        canvas.create_image(icon_x, icon_y, image=icon_images[i])
+    # Divider Circle (white ring) between volume and main sectors
+    divider_radius = 75
+    canvas.create_oval(
+        center_x - divider_radius, center_y - divider_radius,
+        center_x + divider_radius, center_y + divider_radius, fill="white",
+        outline="white", width=4
+    )
+
+    # Central volume control
+    volume_radius = 50
+    canvas.create_oval(center_x - volume_radius, center_y - volume_radius, 
+                    center_x + volume_radius, center_y + volume_radius, 
+                    fill="darkgray", outline="lightgray", width=2)
+    volume_text = canvas.create_text(center_x, center_y, text="Volume\n62%", font=("Helvetica", 12, "bold"), fill="black")
+    ##how to maintain volume numbers?
+
+
+# Function to hide the selection panel by clearing the items
+def hide_selection_panel():
+    global selection_panel_items
+    for item in selection_panel_items:
+        canvas.delete(item)
+    selection_panel_items.clear()
+
+# Updated detect_gesture function
 def detect_gesture():
-    global current_volume
+    global current_volume, last_selected_sector, selection_frame_count
     success, frame = cap.read()
     if not success:
         print("Ignoring empty camera frame.")
+        root.after(10, detect_gesture)
         return
 
-    # Flip the frame horizontally for selfie-view
+    # Flip and process the frame
     frame = cv2.flip(frame, 1)
-
-    # Convert the BGR image to RGB
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Process the image and find hands
     results = hands.process(image)
 
     if results.multi_hand_landmarks:
-        for hand_index, hand_landmarks in enumerate(results.multi_hand_landmarks):
+        for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
                 frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
                 mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=2),
                 mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2)
             )
 
-            # Get the index finger tip coordinates for each hand
+            # Index finger tip's position on the canvas
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            canvas_width, canvas_height = root.winfo_width(), root.winfo_height()
+            canvas_x_index = int(index_tip.x * canvas.winfo_width())
+            canvas_y_index = int(index_tip.y * canvas.winfo_height())
+            canvas.coords(cursor, canvas_x_index, canvas_y_index)
 
-            # Calculate the position of the fingertip on the radial menu canvas
-            canvas_x = int(index_tip.x * canvas_width)
-            canvas_y = int(index_tip.y * canvas_height)
+            # Check if only index and middle fingers are raised, or if index, middle, and ring are raised
+            finger_tips = [hand_landmarks.landmark[f] for f in [
+                mp_hands.HandLandmark.THUMB_TIP,
+                mp_hands.HandLandmark.INDEX_FINGER_TIP,
+                mp_hands.HandLandmark.MIDDLE_FINGER_TIP,
+                mp_hands.HandLandmark.RING_FINGER_TIP,
+                mp_hands.HandLandmark.PINKY_TIP
+            ]]
+            only_index_middle_raised = (
+                finger_tips[1].y < finger_tips[0].y and finger_tips[2].y < finger_tips[0].y and
+                finger_tips[1].y < finger_tips[3].y and finger_tips[2].y < finger_tips[4].y and
+                finger_tips[3].y > finger_tips[0].y  # Ring finger is down
+            )
 
-            # Update the cursor position
-            canvas.coords(cursor, canvas_x, canvas_y)
+            index_middle_ring_raised = (
+                finger_tips[1].y < finger_tips[0].y and finger_tips[2].y < finger_tips[0].y and
+                finger_tips[3].y < finger_tips[0].y  # Index, middle, and ring fingers are up
+            )
 
-            # Check if the index finger is hovering over any segment
-            for i, segment in enumerate(segments):
-                start_angle = i * 360 / num_options
-                end_angle = start_angle + 360 / num_options
+            if index_middle_ring_raised:
+                # Hide selection if index, middle, and ring fingers are raised
+                hide_selection_panel()
+                last_selected_sector = None  # Reset selection
+                selection_frame_count = 0  # Reset frame count
 
-                # Calculate angle of the finger relative to center
-                rel_x, rel_y = canvas_x - center_x, center_y - canvas_y  # inverted y-axis for Tkinter
-                angle = (math.degrees(math.atan2(rel_y, rel_x)) + 360) % 360  # normalize angle to [0, 360]
+            elif only_index_middle_raised:
+                for i, segment in enumerate(segments):
+                    start_angle = i * segment_angle
+                    end_angle = start_angle + segment_angle
 
-                # Calculate distance from the center
-                distance = math.sqrt(rel_x ** 2 + rel_y ** 2)
+                    rel_x_index = canvas_x_index - center_x
+                    rel_y_index = center_y - canvas_y_index
+                    angle_index = (math.degrees(math.atan2(rel_y_index, rel_x_index)) + 360) % 360
+                    distance_index = math.sqrt(rel_x_index ** 2 + rel_y_index ** 2)
+                    if start_angle <= angle_index < end_angle and radius_inner < distance_index < radius_outer:
+                        selection_frame_count += 1
+                        canvas.itemconfig(segment, fill="cyan")
+                        draw_selection_panel(i)
+                        # if selection_frame_count > 5 and last_selected_sector != options[i]:
+                        #     last_selected_sector = options[i]
+                        #     draw_selection_panel(options[i])
+                        #     selection_frame_count = 0
+                    else:
+                        canvas.itemconfig(segment, fill="lightgray")
+                        selection_frame_count = 0  # Reset frame count when fingers are not stable
 
-                # Check if the angle and distance place the finger within this segment
-                if start_angle <= angle < end_angle and radius_inner < distance < radius_outer:
-                    canvas.itemconfig(segment, fill="cyan")  # Highlight segment
-                else:
-                    canvas.itemconfig(segment, fill="lightgray")  # Reset segment color
-
-            # Use thumb y-coordinate to control volume
-            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-            thumb_y = thumb_tip.y * frame.shape[0]
-            
-            if thumb_y < frame.shape[0] // 3:
-                current_volume = min(100, current_volume + 1)
-            elif thumb_y > 2 * frame.shape[0] // 3:
-                current_volume = max(0, current_volume - 1)
-            
-            # Update volume display
-            update_volume_display(current_volume)
-
-    # Show the frame with landmarks in OpenCV window
+    # Show frame and update loop
     cv2.imshow("Gesture Control", frame)
-    cv2.waitKey(1)
-
-    # Call the function again to keep the gesture detection loop running
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        root.quit()
+        return
+    
     root.after(10, detect_gesture)
 
 # Start gesture detection loop
