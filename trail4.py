@@ -150,7 +150,6 @@ def draw_selection_panel(selected_option_index):
         center_x + divider_radius, center_y + divider_radius, fill="white",
         outline="white", width=4
     )
-
     # Central volume control
     volume_radius = 50
     canvas.create_oval(center_x - volume_radius, center_y - volume_radius, 
@@ -158,7 +157,6 @@ def draw_selection_panel(selected_option_index):
                     fill="darkgray", outline="lightgray", width=2)
     volume_text = canvas.create_text(center_x, center_y, text="Volume\n62%", font=("Helvetica", 12, "bold"), fill="black")
     ##how to maintain volume numbers?
-
 
 # Function to hide the selection panel by clearing the items
 def hide_selection_panel():
