@@ -6,182 +6,137 @@ import math
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.7)
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.7)
 mp_drawing = mp.solutions.drawing_utils
 
 # Initialize CustomTkinter GUI
 ctk.set_appearance_mode("dark")
 root = ctk.CTk()
-root.title("Gesture-Based Radial Menu")
+root.title("Gesture-Based Pomodoro Timer")
 root.geometry("500x500")
 
 # Set background color of the root
 root.configure(bg="black")
 
-# Canvas for radial menu
+# Canvas for displaying the timer
 canvas = ctk.CTkCanvas(root, width=500, height=500, bg="black", highlightthickness=0)
 canvas.pack()
 
-# Text options for radial menu buttons
-options = [
-    "Elephant", "Monkey", "Cat",
-    "Lion", "Dog", "Cow",
-    "Duck", "Sheep"
-]
-
-# Radial menu settings
+# Pomodoro settings
+timer_radius = 150
 center_x, center_y = 250, 250
-radius = 150
-num_options = len(options)
+default_session_time = 25  # in minutes
+remaining_time = default_session_time * 60  # in seconds
+is_running = False
 
-# Add text options in circular layout with rounded backgrounds
-buttons = []
-button_backgrounds = []
-for i, option in enumerate(options):
-    angle = 2 * math.pi * i / num_options
-    option_x = center_x + radius * math.cos(angle)
-    option_y = center_y + radius * math.sin(angle)
-    
-    # Draw a rounded circle as button background with shadow effect
-    rect = canvas.create_oval(option_x - 40, option_y - 40, option_x + 40, option_y + 40, 
-                               fill="lightgray", outline="gray", width=2)
-    button_backgrounds.append(rect)
-    
-    # Button text
-    button = canvas.create_text(option_x, option_y, text=option, font=("Helvetica", 12, "bold"), fill="black")
-    buttons.append(button)
+# Timer circle and text
+canvas.create_oval(
+    center_x - timer_radius, center_y - timer_radius,
+    center_x + timer_radius, center_y + timer_radius,
+    fill="darkgray", outline="lightgray", width=2
+)
+timer_text = canvas.create_text(
+    center_x, center_y - 20, text=f"{default_session_time}:00", 
+    font=("Helvetica", 32, "bold"), fill="white"
+)
+status_text = canvas.create_text(
+    center_x, center_y + 50, text="Paused", font=("Helvetica", 16), fill="yellow"
+)
 
-# Central volume control with a circular indicator
-volume_radius = 50
-canvas.create_oval(center_x - volume_radius, center_y - volume_radius, 
-                   center_x + volume_radius, center_y + volume_radius, 
-                   fill="darkgray", outline="lightgray", width=2)
-volume_text = canvas.create_text(center_x, center_y, text="Volume\n62%", font=("Helvetica", 12, "bold"), fill="black")
-
-# Track the volume level and volume indicator arc ID
-current_volume = 62
-volume_arc_id = None  # To keep track of the arc ID for the circular indicator
-
-# Function to update the volume indicator
-def update_volume_indicator(volume_level):
-    global volume_arc_id
-    # Clear the previous arc
-    if volume_arc_id:
-        canvas.delete(volume_arc_id)
-    
-    # Calculate angle based on volume
-    angle_end = (volume_level / 100) * 360
-    
-    # Draw new arc for the current volume level
-    volume_arc_id = canvas.create_arc(center_x - volume_radius, center_y - volume_radius, 
-                                      center_x + volume_radius, center_y + volume_radius,
-                                      start=0, extent=angle_end, style="arc", outline="cyan", width=6)
-
-# Initial volume display
-update_volume_indicator(current_volume)
-
+# Variables for gesture control
 cursor_radius = 5
 cursor = canvas.create_oval(-cursor_radius, -cursor_radius, cursor_radius, cursor_radius, fill="red", outline="")
-
 cap = cv2.VideoCapture(0)
 
+# Timer functions
+def update_timer():
+    global remaining_time, is_running
+
+    if is_running and remaining_time > 0:
+        remaining_time -= 1
+        minutes, seconds = divmod(remaining_time, 60)
+        canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
+    elif remaining_time == 0:
+        canvas.itemconfig(status_text, text="Time's Up!", fill="red")
+        is_running = False
+
+    if is_running:
+        root.after(1000, update_timer)
+
+def start_timer():
+    global is_running
+    is_running = True
+    canvas.itemconfig(status_text, text="Running", fill="green")
+    update_timer()
+
+def pause_timer():
+    global is_running
+    is_running = False
+    canvas.itemconfig(status_text, text="Paused", fill="yellow")
+
+def reset_timer():
+    global remaining_time, is_running
+    is_running = False
+    remaining_time = default_session_time * 60
+    minutes, seconds = divmod(remaining_time, 60)
+    canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
+    canvas.itemconfig(status_text, text="Paused", fill="yellow")
+
+def adjust_time(amount):
+    global remaining_time
+    remaining_time = max(0, remaining_time + amount * 60)
+    minutes, seconds = divmod(remaining_time, 60)
+    canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
+
+# Gesture detection
 def detect_gesture():
-    global current_volume
+    global remaining_time
+
     success, frame = cap.read()
     if not success:
         print("Ignoring empty camera frame.")
         return
 
-    # Flip the frame horizontally for a later selfie-view display
     frame = cv2.flip(frame, 1)
-
-    # Convert the BGR image to RGB
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Process the image and find hands
     results = hands.process(image)
 
-    # Draw the hand annotations on the image
-    image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-    # Clear previous cursor position
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
     canvas.itemconfig(cursor, fill="red")
 
     if results.multi_hand_landmarks:
-        for hand_index, hand_landmarks in enumerate(results.multi_hand_landmarks):
-            # Draw landmarks and connections on the frame
-            mp_drawing.draw_landmarks(
-                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=2),
-                mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2)
-            )
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-            # Get the index finger tip coordinates for each hand
+            # Index finger tip
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-            canvas_width = canvas.winfo_width()
-            canvas_height = canvas.winfo_height()
-
             canvas_x = int(index_tip.x * canvas_width)
             canvas_y = int(index_tip.y * canvas_height)
 
-            # Update the cursor position
-            canvas.coords(cursor, canvas_x - cursor_radius, canvas_y - cursor_radius, 
+            # Update cursor position
+            canvas.coords(cursor, canvas_x - cursor_radius, canvas_y - cursor_radius,
                           canvas_x + cursor_radius, canvas_y + cursor_radius)
 
-            # Check if the index finger is hovering over any text option
-            for i, button in enumerate(button_backgrounds):
-                button_bbox = canvas.bbox(button)
-                
-                if button_bbox:
-                    # Calculate center of the button
-                    button_x = (button_bbox[0] + button_bbox[2]) / 2  
-                    button_y = (button_bbox[1] + button_bbox[3]) / 2
-                    hand_to_button_distance = np.sqrt((button_x - canvas_x) ** 2 + (button_y - canvas_y) ** 2)
-
-                    # If hovering within a certain distance, change background color
-                    if hand_to_button_distance < 50:
-                        canvas.itemconfig(button, fill="cyan")
-
-                        # Check distance between index finger and middle finger
-                        middle_x = int(middle_tip.x * canvas_width)
-                        middle_y = int(middle_tip.y * canvas_height)
-                        distance_fingers = np.sqrt((middle_x - canvas_x) ** 2 + (middle_y - canvas_y) ** 2)
-
-                        # If fingers are close enough, trigger the button press
-                        if distance_fingers < 30:  # Adjust this threshold as needed
-                            show_submenu(option, button_x, button_y)
-
-                    else:
-                        canvas.itemconfig(button, fill="lightgray")
-
-            # Use thumb y-coordinate to control volume (scroll effect)
+            # Thumb tip for volume adjustments
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-            thumb_coords = (int(thumb_tip.x * frame.shape[1]), int(thumb_tip.y * frame.shape[0]))
-            
-            if thumb_coords[1] < frame.shape[0] // 3:
-                current_volume = min(100, current_volume + 1)
-            elif thumb_coords[1] > 2 * frame.shape[0] // 3:
-                current_volume = max(0, current_volume - 1)
-            
-            # Update volume text and circular indicator
-            canvas.itemconfig(volume_text, text=f"Volume\n{current_volume}%")
-            update_volume_indicator(current_volume)
-    
-    # Display the frame with landmarks in OpenCV window
+            thumb_coords = (int(thumb_tip.x * canvas_width), int(thumb_tip.y * canvas_height))
+
+            # Gesture-based controls
+            if canvas_y < canvas_height // 3:
+                start_timer()  # Gesture to start the timer
+            elif canvas_y > 2 * canvas_height // 3:
+                pause_timer()  # Gesture to pause the timer
+
+            # Thumb adjustments for time
+            if thumb_coords[1] < canvas_height // 3:
+                adjust_time(1)  # Gesture to increase session time
+            elif thumb_coords[1] > 2 * canvas_height // 3:
+                adjust_time(-1)  # Gesture to decrease session time
+
     cv2.imshow("Gesture Control", frame)
     cv2.waitKey(1)
-    
     root.after(10, detect_gesture)
-
-def show_submenu(option, button_x, button_y):
-    # Display the selection text next to the button
-    selection_text = canvas.create_text(button_x + 60, button_y, text="selected", 
-                                         font=("Helvetica", 14), fill="yellow")
-    
-    # Set a timer to remove the text after a few seconds
-    root.after(2000, lambda: canvas.delete(selection_text))  # Adjust the time (3000 ms = 3 seconds)
 
 # Start gesture detection loop
 root.after(10, detect_gesture)
