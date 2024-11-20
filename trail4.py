@@ -1,8 +1,7 @@
 import customtkinter as ctk
-from tkinter import Canvas, Scrollbar, VERTICAL, HORIZONTAL
+from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
-import math
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -12,7 +11,7 @@ mp_drawing = mp.solutions.drawing_utils
 # Initialize CustomTkinter GUI
 ctk.set_appearance_mode("dark")
 root = ctk.CTk()
-root.title("Gesture-Controlled Pomodoro Timer")
+root.title("Pomodoro Timer with Tasks and Music")
 root.geometry("500x700")
 root.configure(bg="black")
 
@@ -26,10 +25,13 @@ canvas.pack(side="left", fill="both", expand=True)
 scrollbar_y = Scrollbar(main_frame, orient=VERTICAL, command=canvas.yview)
 scrollbar_y.pack(side="right", fill="y")
 
+scrollbar_x = Scrollbar(root, orient=HORIZONTAL, command=canvas.xview)
+scrollbar_x.pack(side="bottom", fill="x")
+
 scrollable_frame = ctk.CTkFrame(canvas, fg_color="black")
 scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-canvas.configure(yscrollcommand=scrollbar_y.set)
+canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
 # Timer Section
 timer_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10)
@@ -72,8 +74,49 @@ for task in task_list:
     task_label = ctk.CTkLabel(tasks_frame, text=f"• {task}", font=("Helvetica", 14), text_color="white")
     task_label.pack(anchor="w", padx=20, pady=5)
 
-# OpenCV Camera Initialization
-cap = cv2.VideoCapture(0)
+# Sounds Section
+sounds_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10)
+sounds_frame.pack(pady=10, padx=10, fill="x")
+
+sounds_label = ctk.CTkLabel(sounds_frame, text="Sounds", font=("Helvetica", 16, "bold"), text_color="white")
+sounds_label.pack(pady=10)
+
+sound_controls = ctk.CTkFrame(sounds_frame, fg_color="black", corner_radius=5)
+sound_controls.pack(pady=5, padx=10, fill="x")
+
+play_button = ctk.CTkButton(sound_controls, text="Play", command=lambda: print("Play clicked"))
+play_button.pack(side="left", padx=5)
+
+pause_button = ctk.CTkButton(sound_controls, text="Pause", command=lambda: print("Pause clicked"))
+pause_button.pack(side="left", padx=5)
+
+stop_button = ctk.CTkButton(sound_controls, text="Stop", command=lambda: print("Stop clicked"))
+stop_button.pack(side="left", padx=5)
+
+# Music Selection Section
+music_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10)
+music_frame.pack(pady=10, padx=10, fill="x")
+
+music_label = ctk.CTkLabel(music_frame, text="Music", font=("Helvetica", 16, "bold"), text_color="white")
+music_label.pack(pady=10)
+
+music_canvas = Canvas(music_frame, height=100, bg="black", highlightthickness=0)
+music_canvas.pack(fill="x")
+
+music_scrollbar = Scrollbar(music_frame, orient=HORIZONTAL, command=music_canvas.xview)
+music_scrollbar.pack(fill="x")
+music_canvas.configure(xscrollcommand=music_scrollbar.set)
+
+music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="black")
+music_canvas.create_window((0, 0), window=music_inner_frame, anchor="nw")
+
+music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5"]
+for music in music_options:
+    music_button = ctk.CTkButton(music_inner_frame, text=music, command=lambda m=music: print(f"{m} selected"))
+    music_button.pack(side="left", padx=5, pady=5)
+
+music_inner_frame.update_idletasks()
+music_canvas.configure(scrollregion=music_canvas.bbox("all"))
 
 # Timer Functions
 def update_timer():
@@ -109,55 +152,12 @@ def reset_timer():
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
     timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
 
-def extend_timer():
-    global remaining_time
-    remaining_time += 5 * 60
-    minutes, seconds = divmod(remaining_time, 60)
-    timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
-
-# Gesture Detection
+# Gesture Detection (Optional, Placeholder for now)
 def detect_gesture():
-    success, frame = cap.read()
-    if not success:
-        root.after(10, detect_gesture)
-        return
-
-    frame = cv2.flip(frame, 1)
-    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = hands.process(image)
-
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-            # Extract relevant landmarks
-            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-            pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
-
-            # Check gestures
-            if index_tip.y < middle_tip.y < pinky_tip.y:  # "Peace" gesture for pause
-                pause_timer()
-            elif all(landmark.y > middle_tip.y for landmark in [index_tip, thumb_tip]):  # Fist for stop
-                reset_timer()
-            elif index_tip.y < thumb_tip.y:  # Extend timer gesture
-                extend_timer()
-            elif middle_tip.y < index_tip.y:  # All fingers up for start
-                start_timer()
-
-    # Show webcam feed for debugging
-    cv2.imshow("Gesture Detection", frame)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        root.quit()
-        return
-
-    root.after(10, detect_gesture)
+    root.after(100, detect_gesture)
 
 # Start gesture detection loop
-root.after(10, detect_gesture)
+root.after(100, detect_gesture)
 
 # Run the application
 root.mainloop()
-cap.release()
-cv2.destroyAllWindows()
