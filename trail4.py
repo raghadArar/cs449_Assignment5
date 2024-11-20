@@ -3,6 +3,11 @@ from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
 import threading
+import webbrowser
+import pyautogui
+import win32api
+import win32con
+from win32con import VK_MEDIA_PLAY_PAUSE, KEYEVENTF_EXTENDEDKEY
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -124,18 +129,30 @@ music_frame.pack(pady=10, padx=10, fill="x")
 music_label = ctk.CTkLabel(music_frame, text="Music", font=("Helvetica", 16, "bold"), text_color="white")
 music_label.pack(pady=10)
 
+def send_media_key(key):
+    """Sends the media key press using pywin32."""
+    if key == 'play/pause':
+        # Simulate the MediaPlayPause key press (Media Play / Pause)
+        win32api.keybd_event(VK_MEDIA_PLAY_PAUSE, 0, KEYEVENTF_EXTENDEDKEY, 0)
+    elif key == 'stop':
+        # Simulate the MediaStop key press (Media Stop)
+        win32api.keybd_event(0xB2, 0, win32con.KEYEVENTF_SCANCODE, 0)  # Media Stop (0xB2)
+        win32api.keybd_event(0xB2, 0, win32con.KEYEVENTF_KEYUP, 0)  # Release the key
+
+def play_pause():
+    """Simulates the MediaPlayPause key."""
+    send_media_key('play/pause')
+
+def stop_video():
+    """Simulates the MediaStop key."""
+    send_media_key('stop')
+
 # Sound Controls
 sound_controls = ctk.CTkFrame(music_frame, fg_color="darkgray", corner_radius=5)
 sound_controls.pack(pady=10)
 
-play_button = ctk.CTkButton(sound_controls, text="▶ Play", command=lambda: print("Play clicked"))
+play_button = ctk.CTkButton(sound_controls, text="▶ Play / ⏸ Pause", command=play_pause)
 play_button.pack(side="left", padx=5)
-
-pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", command=lambda: print("Pause clicked"))
-pause_button.pack(side="left", padx=5)
-
-stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
-stop_button.pack(side="left", padx=5)
 
 # Spacer to add space between controls and the music list
 spacer = ctk.CTkFrame(music_frame, fg_color="darkgray", height=5)
@@ -152,15 +169,21 @@ music_canvas.configure(xscrollcommand=music_scrollbar.set)
 music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="darkgray")
 music_canvas.create_window((0, 0), window=music_inner_frame, anchor="nw")
 
-music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5"]
-for music in music_options:
+music_options = [
+    ("Never Gonna Give You Up", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),  # Rick Astley - Never Gonna Give You Up
+    ("Bohemian Rhapsody", "https://www.youtube.com/watch?v=fJ9rUzIMcZQ"),  # Queen - Bohemian Rhapsody
+    ("Billie Jean", "https://www.youtube.com/watch?v=Zi_XLOBDo_Y"),  # Michael Jackson - Billie Jean
+    ("Smells Like Teen Spirit", "https://www.youtube.com/watch?v=hTWKbfoikeg"),  # Nirvana - Smells Like Teen Spirit
+    ("Faded", "https://www.youtube.com/watch?v=60ItHLz5WEA"),  # Alan Walker - Faded
+]
+# Create buttons for each music option
+for music, url in music_options:
     music_button = ctk.CTkButton(
         music_inner_frame, text=music, width=100, height=100,
         corner_radius=10, font=("Helvetica", 12),
-        command=lambda m=music: print(f"{m} selected")
+        command=lambda link=url: webbrowser.open(link)  # Open the YouTube URL
     )
     music_button.pack(side="left", padx=5, pady=5)
-
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
 # Cursor overlay on the main GUI
@@ -204,8 +227,14 @@ def reset_timer():
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
     timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
 
+def map_coordinates(cv_x, cv_y, frame_width, frame_height, gui_width, gui_height):
+    gui_x = int(cv_x / frame_width * gui_width)
+    gui_y = int(cv_y / frame_height * gui_height)
+    return gui_x, gui_y
+
 def detect_gesture_loop():
-    """Detect gestures and enable interactions with buttons via pinch, alongside scrolling gestures."""
+    global root, cap, cursor_canvas
+
     ret, frame = cap.read()
     if not ret:
         root.after(10, detect_gesture_loop)
@@ -215,7 +244,9 @@ def detect_gesture_loop():
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(frame_rgb)
 
-    cursor_position = None  # Initialize cursor position
+    cursor_position = None
+    gui_width = root.winfo_width()
+    gui_height = root.winfo_height()
 
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
@@ -224,48 +255,60 @@ def detect_gesture_loop():
             # Retrieve landmarks for gesture detection
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            finger_tips = [
-                hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP],
-                hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP],
-                hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP],
-                hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP],
-            ]
-            palm_y = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].y
 
-            # Gesture: Scrolling (Pointing up or down)
-            finger_y_positions = [tip.y for tip in finger_tips]
-            pointing_up = all(finger_y < palm_y for finger_y in finger_y_positions)
-            pointing_down = all(finger_y > palm_y for finger_y in finger_y_positions)
-
-            if pointing_up:
-                canvas.yview_scroll(-1, "units")  # Scroll up
-            elif pointing_down:
-                canvas.yview_scroll(1, "units")  # Scroll down
+            # Calculate cursor position in OpenCV coordinates
+            cursor_x = int(index_tip.x * frame.shape[1])
+            cursor_y = int(index_tip.y * frame.shape[0])
+            cursor_position = (cursor_x, cursor_y)
 
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.05  # Adjust as needed
 
-            # Calculate cursor position
-            cursor_x = int(index_tip.x * frame.shape[1])
-            cursor_y = int(index_tip.y * frame.shape[0])
-            cursor_position = (cursor_x, cursor_y)
-
             if pinch_distance < pinch_threshold:
-                # Check if the pinch overlaps with any button
-                for button in [start_button, pause_button, reset_button]:
-                    x1, y1, x2, y2 = get_button_bbox(button)
-                    if x1 <= cursor_x <= x2 and y1 <= cursor_y <= y2:
-                        button.invoke()  # Simulate a button click
-                        break
+                # Scale and adjust OpenCV coordinates to GUI coordinates
+                #gui_cursor_x = int(cursor_x / frame.shape[1] * gui_width)
+                #gui_cursor_y = int(cursor_y / frame.shape[0] * gui_height)
 
-    # Update the cursor position dynamically
+                # Apply an offset if needed
+                y_offset = root.winfo_rooty()  # Distance from the top of the screen to the GUI content
+                x_offset = root.winfo_rootx()  # Distance from the left of the screen to the GUI content
+
+                # Map cursor position from OpenCV to GUI
+                gui_cursor_x, gui_cursor_y = map_coordinates(
+                    cursor_position[0], cursor_position[1],
+                    frame.shape[1], frame.shape[0],  # OpenCV frame dimensions
+                    root.winfo_width(), root.winfo_height()  # GUI dimensions
+                )
+
+                # Account for offsets
+                gui_cursor_x += x_offset
+                gui_cursor_y += y_offset + 30
+
+                # Update the cursor position in the GUI
+                cursor_canvas.place(x=gui_cursor_x, y=gui_cursor_y)
+
+
+                # Simulate a left-click
+                pyautogui.click(gui_cursor_x, gui_cursor_y)
+                print(f"Frame Size: {frame.shape[1]}x{frame.shape[0]}")
+                print(f"GUI Size: {root.winfo_width()}x{root.winfo_height()}")
+                print(f"Mapped Cursor Position: ({gui_cursor_x}, {gui_cursor_y})")
+
+                print(f"Click at: ({gui_cursor_x}, {gui_cursor_y})")
+
+    # Update the cursor position in the GUI
     if cursor_position:
-        gui_cursor_x = int(cursor_position[0] / frame.shape[1] * root.winfo_width())
-        gui_cursor_y = int(cursor_position[1] / frame.shape[0] * root.winfo_height())
+        gui_cursor_x = int(cursor_position[0] / frame.shape[1] * gui_width)
+        gui_cursor_y = int(cursor_position[1] / frame.shape[0] * gui_height)
+
+        # Apply the same offset
+        y_offset = 30
+        gui_cursor_y += y_offset
+
         cursor_canvas.place(x=gui_cursor_x, y=gui_cursor_y)
 
-    # Optionally show the detection on the OpenCV frame
+    # Show the frame in OpenCV window
     cv2.imshow('Gesture Detection', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         root.destroy()
@@ -276,11 +319,11 @@ def detect_gesture_loop():
 
 
 def get_button_bbox(button):
-    """Calculate the bounding box of a button."""
-    widget_id = button.winfo_id()
+    """Calculate the bounding box of a button in GUI coordinates."""
     x1, y1 = button.winfo_rootx(), button.winfo_rooty()
     x2, y2 = x1 + button.winfo_width(), y1 + button.winfo_height()
     return x1, y1, x2, y2
+
 
 
 # Initialize OpenCV capture
