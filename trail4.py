@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
+import threading
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -43,6 +44,7 @@ timer_label.pack(pady=10)
 timer_canvas = Canvas(timer_frame, width=400, height=400, bg="darkgray", highlightthickness=0)
 timer_canvas.pack()
 
+
 timer_radius = 150
 center_x, center_y = 200, 200
 default_session_time = 25  # in minutes
@@ -66,13 +68,13 @@ status_text = timer_canvas.create_text(
 controls_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=5)
 controls_frame.pack(pady=10)
 
-start_button = ctk.CTkButton(controls_frame, text="▶ Start", command=lambda: print("Start Timer"))
+start_button = ctk.CTkButton(controls_frame, text="▶ Start", command=lambda: start_timer())
 start_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", command=lambda: print("Pause Timer"))
+pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", command=lambda: pause_timer())
 pause_button.pack(side="left", padx=5)
 
-reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", command=lambda: print("Reset Timer"))
+reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", command=lambda: reset_timer())
 reset_button.pack(side="left", padx=5)
 
 # Function to add a new task
@@ -162,7 +164,6 @@ for music in music_options:
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
 
-
 # Timer Functions
 def update_timer():
     global remaining_time, is_running
@@ -197,12 +198,96 @@ def reset_timer():
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
     timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
 
-# Gesture Detection (Optional, Placeholder for now)
-def detect_gesture():
-    root.after(100, detect_gesture)
+# Gesture overlay canvas
+def detect_gesture_loop():
+    """Detect gestures and enable interactions with buttons via pinch, alongside scrolling gestures."""
+    ret, frame = cap.read()
+    if not ret:
+        root.after(10, detect_gesture_loop)
+        return
 
-# Start gesture detection loop
-root.after(100, detect_gesture)
+    frame = cv2.flip(frame, 1)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(frame_rgb)
+
+    cursor_position = None  # Initialize cursor position
+
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Retrieve landmarks for gesture detection
+            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            finger_tips = [
+                hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP],
+                hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP],
+                hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP],
+                hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP],
+            ]
+            palm_y = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST].y
+
+            # Gesture: Scrolling (Pointing up or down)
+            finger_y_positions = [tip.y for tip in finger_tips]
+            pointing_up = all(finger_y < palm_y for finger_y in finger_y_positions)
+            pointing_down = all(finger_y > palm_y for finger_y in finger_y_positions)
+
+            if pointing_up:
+                canvas.yview_scroll(-1, "units")  # Scroll up
+            elif pointing_down:
+                canvas.yview_scroll(1, "units")  # Scroll down
+
+            # Gesture: Pinch Detection
+            pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
+            pinch_threshold = 0.05  # Adjust as needed
+            print(pinch_distance)
+            # Calculate cursor position
+            cursor_x = int(index_tip.x * frame.shape[1])
+            cursor_y = int(index_tip.y * frame.shape[0])
+            cursor_position = (cursor_x, cursor_y)
+            print(cursor_position, "CURSOR POSITION")
+            if pinch_distance < pinch_threshold:
+                # Highlight the cursor on the pinch
+                cv2.circle(frame, cursor_position, 10, (0, 0, 255), -1)  # Red circle for pinch
+
+                # Check if the pinch overlaps with any button
+                for button in [start_button, pause_button, reset_button]:
+                    x1, y1, x2, y2 = get_button_bbox(button)
+                    if x1 <= cursor_x <= x2 and y1 <= cursor_y <= y2:
+                        print(f"Cursor is over the {button.cget('text')} button.")
+                        button.invoke()  # Simulate a button click
+                        break
+
+    # Draw the cursor on the frame
+    if cursor_position:
+        cv2.circle(frame, cursor_position, 10, (255, 0, 0), -1)  # Blue circle for cursor
+
+    # Optionally show the detection on the OpenCV frame
+    cv2.imshow('Gesture Detection', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        root.destroy()
+        return
+
+    root.after(10, detect_gesture_loop)
+
+
+def get_button_bbox(button):
+    """Calculate the bounding box of a button."""
+    widget_id = button.winfo_id()
+    x1, y1 = button.winfo_rootx(), button.winfo_rooty()
+    x2, y2 = x1 + button.winfo_width(), y1 + button.winfo_height()
+    return x1, y1, x2, y2
+
+
+# Initialize OpenCV capture
+cap = cv2.VideoCapture(0)
+
+# Start the gesture detection loop
+root.after(10, detect_gesture_loop)
 
 # Run the application
 root.mainloop()
+
+# Release resources when the application closes
+cap.release()
+cv2.destroyAllWindows()
