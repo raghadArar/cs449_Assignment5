@@ -163,6 +163,12 @@ for music in music_options:
 
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
+# Cursor overlay on the main GUI
+cursor_canvas = Canvas(root, bg="grey", highlightthickness=0, width=20, height=20)
+cursor_canvas.place(x=0, y=0)  # Start at the top-left corner
+
+# Draw the cursor (a circle)
+cursor_id = cursor_canvas.create_oval(2, 2, 18, 18, fill="red", outline="black")
 
 # Timer Functions
 def update_timer():
@@ -198,7 +204,6 @@ def reset_timer():
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
     timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
 
-# Gesture overlay canvas
 def detect_gesture_loop():
     """Detect gestures and enable interactions with buttons via pinch, alongside scrolling gestures."""
     ret, frame = cap.read()
@@ -240,27 +245,25 @@ def detect_gesture_loop():
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.05  # Adjust as needed
-            print(pinch_distance)
+
             # Calculate cursor position
             cursor_x = int(index_tip.x * frame.shape[1])
             cursor_y = int(index_tip.y * frame.shape[0])
             cursor_position = (cursor_x, cursor_y)
-            print(cursor_position, "CURSOR POSITION")
-            if pinch_distance < pinch_threshold:
-                # Highlight the cursor on the pinch
-                cv2.circle(frame, cursor_position, 10, (0, 0, 255), -1)  # Red circle for pinch
 
+            if pinch_distance < pinch_threshold:
                 # Check if the pinch overlaps with any button
                 for button in [start_button, pause_button, reset_button]:
                     x1, y1, x2, y2 = get_button_bbox(button)
                     if x1 <= cursor_x <= x2 and y1 <= cursor_y <= y2:
-                        print(f"Cursor is over the {button.cget('text')} button.")
                         button.invoke()  # Simulate a button click
                         break
 
-    # Draw the cursor on the frame
+    # Update the cursor position dynamically
     if cursor_position:
-        cv2.circle(frame, cursor_position, 10, (255, 0, 0), -1)  # Blue circle for cursor
+        gui_cursor_x = int(cursor_position[0] / frame.shape[1] * root.winfo_width())
+        gui_cursor_y = int(cursor_position[1] / frame.shape[0] * root.winfo_height())
+        cursor_canvas.place(x=gui_cursor_x, y=gui_cursor_y)
 
     # Optionally show the detection on the OpenCV frame
     cv2.imshow('Gesture Detection', frame)
@@ -269,6 +272,7 @@ def detect_gesture_loop():
         return
 
     root.after(10, detect_gesture_loop)
+
 
 
 def get_button_bbox(button):
