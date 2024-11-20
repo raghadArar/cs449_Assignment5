@@ -2,6 +2,8 @@ import customtkinter as ctk
 from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
+import numpy as np
+import math
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -163,6 +165,11 @@ music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
 
 
+# Variables for gesture control
+cursor_radius = 5
+cursor = canvas.create_oval(-cursor_radius, -cursor_radius, cursor_radius, cursor_radius, fill="red", outline="")
+cap = cv2.VideoCapture(0)
+
 # Timer Functions
 def update_timer():
     global remaining_time, is_running
@@ -199,10 +206,56 @@ def reset_timer():
 
 # Gesture Detection (Optional, Placeholder for now)
 def detect_gesture():
-    root.after(100, detect_gesture)
+    global remaining_time
+
+    success, frame = cap.read()
+    if not success:
+        print("Ignoring empty camera frame.")
+        return
+
+    frame = cv2.flip(frame, 1)
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(image)
+
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+    canvas.itemconfig(cursor, fill="red")
+
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Index finger tip
+            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            canvas_x = int(index_tip.x * canvas_width)
+            canvas_y = int(index_tip.y * canvas_height)
+
+            # Update cursor position
+            canvas.coords(cursor, canvas_x - cursor_radius, canvas_y - cursor_radius,
+                          canvas_x + cursor_radius, canvas_y + cursor_radius)
+
+            # Thumb tip for volume adjustments
+            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            thumb_coords = (int(thumb_tip.x * canvas_width), int(thumb_tip.y * canvas_height))
+
+            # Gesture-based controls
+            if canvas_y < canvas_height // 3:
+                start_timer()  # Gesture to start the timer
+            elif canvas_y > 2 * canvas_height // 3:
+                pause_timer()  # Gesture to pause the timer
+
+            # Thumb adjustments for time
+            if thumb_coords[1] < canvas_height // 3:
+                adjust_time(1)  # Gesture to increase session time
+            elif thumb_coords[1] > 2 * canvas_height // 3:
+                adjust_time(-1)  # Gesture to decrease session time
+
+    cv2.imshow("Gesture Control", frame)
+    cv2.waitKey(1)
+    root.after(10, detect_gesture)
 
 # Start gesture detection loop
-root.after(100, detect_gesture)
-
-# Run the application
+root.after(10, detect_gesture)
 root.mainloop()
+cap.release()
+cv2.destroyAllWindows()
