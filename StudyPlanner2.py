@@ -1,12 +1,11 @@
-#button clicks are working for timer but buttons are 2 small and program crashes after second "pinch"
-
-
+#cannot see camera but camera is on, the pause button dont work and the reset button works as pause
 import customtkinter as ctk
 from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
 import threading
 import time
+from PIL import Image, ImageTk
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -72,13 +71,13 @@ status_text = timer_canvas.create_text(
 controls_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=5)
 controls_frame.pack(pady=10)
 
-start_button = ctk.CTkButton(controls_frame, text="▶ Start", command=lambda: start_timer())
+start_button = ctk.CTkButton(controls_frame, text="▶ Start",width=100,height=50, command=lambda: start_timer())
 start_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", command=lambda: pause_timer())
+pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", width=100,height=50,command=lambda: pause_timer())
 pause_button.pack(side="left", padx=5)
 
-reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", command=lambda: reset_timer())
+reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", width=100,height=50,command=lambda: reset_timer())
 reset_button.pack(side="left", padx=5)
 
 # Function to add a new task
@@ -208,6 +207,60 @@ def reset_timer():
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
     timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
 
+
+
+# Initialize OpenCV capture
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Error: Camera not accessible")
+    root.quit()
+
+def update_camera_feed():
+    """Update the camera feed and process gestures in the background."""
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to capture frame")
+        close_resources()
+        return
+
+    # Flip and process the frame
+    frame = cv2.flip(frame, 1)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(frame_rgb)
+
+    gui_cursor_x = gui_cursor_y = None  # Initialize GUI cursor variables
+
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+
+            # Calculate cursor position
+            cursor_x = int(index_tip.x * frame.shape[1])
+            cursor_y = int(index_tip.y * frame.shape[0])
+            gui_cursor_x = int(cursor_x / frame.shape[1] * root.winfo_width())
+            gui_cursor_y = int(cursor_y / frame.shape[0] * root.winfo_height())
+
+            # Gesture: Pinch Detection
+            pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
+            pinch_threshold = 0.05
+
+            if pinch_distance < pinch_threshold:
+                for button in [start_button, pause_button, reset_button]:
+                    x1, y1, x2, y2 = get_button_bbox(button)
+                    if x1 <= gui_cursor_x <= x2 and y1 <= gui_cursor_y <= y2:
+                        button.invoke()  # Simulate a button click
+                        break
+
+    # Update the cursor position dynamically in Tkinter
+    if gui_cursor_x is not None and gui_cursor_y is not None:
+        cursor_canvas.place(x=gui_cursor_x, y=gui_cursor_y)
+
+    # Schedule the next frame update
+    root.after(10, update_camera_feed)
+
 def get_button_bbox(button):
     """Calculate the bounding box of a button."""
     x1 = button.winfo_rootx() - root.winfo_rootx()
@@ -216,105 +269,18 @@ def get_button_bbox(button):
     y2 = y1 + button.winfo_height()
     return x1, y1, x2, y2
 
-def detect_gesture_loop():
-    """Detect gestures and enable interactions with buttons and scrolling."""
-    ret, frame = cap.read()
-    if not ret:
-        root.after(10, detect_gesture_loop)
-        return
+def close_resources():
+    """Release resources and close the application."""
+    hands.close()
+    cap.release()
+    cv2.destroyAllWindows()
+    root.quit()
 
-    frame = cv2.flip(frame, 1)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    results = hands.process(frame_rgb)
+# Close resources when the window is closed
+root.protocol("WM_DELETE_WINDOW", close_resources)
 
-    cursor_position = None  # Initialize cursor position
-    index_middle_prev_y = None
-    index_middle_prev_x = None
+# Start the camera feed
+update_camera_feed()
 
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-            # Retrieve landmarks for gesture detection
-            thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-
-            # Calculate cursor position
-            cursor_x = int(index_tip.x * frame.shape[1])
-            cursor_y = int(index_tip.y * frame.shape[0])
-            cursor_position = (cursor_x, cursor_y)
-
-            # Gesture: Pinch Detection
-            pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
-            pinch_threshold = 0.05  # Adjust as needed
-
-            if pinch_distance < pinch_threshold:
-                # Check if the pinch overlaps with any button
-                for button in [start_button, pause_button, reset_button]:
-                    x1, y1, x2, y2 = get_button_bbox(button)
-                    gui_cursor_x = int(cursor_position[0] / frame.shape[1] * root.winfo_width())
-                    gui_cursor_y = int(cursor_position[1] / frame.shape[0] * root.winfo_height())
-                    
-                    if x1 <= gui_cursor_x <= x2 and y1 <= gui_cursor_y <= y2:
-                        button.invoke()  # Simulate a button click
-                        break
-
-            # Gesture: Two-Finger Vertical Scroll
-            index_middle_distance = abs(index_tip.y - middle_tip.y)
-            index_middle_horizontal_distance = abs(index_tip.x - middle_tip.x)
-            scroll_threshold = 0.05  # Adjust as needed
-
-            if index_middle_distance < scroll_threshold:
-                # Detect vertical movement
-                index_middle_current_y = (index_tip.y + middle_tip.y) / 2
-                if index_middle_prev_y:
-                    scroll_direction = index_middle_prev_y - index_middle_current_y
-                    if scroll_direction > 0.01:
-                        canvas.yview_scroll(-1, "units")  # Scroll up
-                    elif scroll_direction < -0.01:
-                        canvas.yview_scroll(1, "units")  # Scroll down
-                index_middle_prev_y = index_middle_current_y
-
-            # Gesture: Two-Finger Horizontal Scroll
-            if index_middle_horizontal_distance < scroll_threshold:
-                # Detect horizontal movement
-                index_middle_current_x = (index_tip.x + middle_tip.x) / 2
-                if index_middle_prev_x:
-                    scroll_direction = index_middle_prev_x - index_middle_current_x
-                    if scroll_direction > 0.01:
-                        canvas.xview_scroll(-1, "units")  # Scroll left
-                    elif scroll_direction < -0.01:
-                        canvas.xview_scroll(1, "units")  # Scroll right
-                index_middle_prev_x = index_middle_current_x
-
-    # Update the cursor position dynamically
-    if cursor_position:
-        gui_cursor_x = int(cursor_position[0] / frame.shape[1] * root.winfo_width())
-        gui_cursor_y = int(cursor_position[1] / frame.shape[0] * root.winfo_height())
-        cursor_canvas.place(x=gui_cursor_x, y=gui_cursor_y)
-
-    # Optionally show the detection on the OpenCV frame
-    cv2.imshow('Gesture Detection', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        root.destroy()
-        return
-
-    root.after(10, detect_gesture_loop)
-
-
-
-
-
-# Initialize OpenCV capture
-cap = cv2.VideoCapture(0)
-
-# Start the gesture detection loop
-root.after(10, detect_gesture_loop)
-
-# Run the application
+# Run the Tkinter main loop
 root.mainloop()
-
-# Release resources when the application closes
-cap.release()
-cv2.destroyAllWindows()
