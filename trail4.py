@@ -290,7 +290,16 @@ def detect_gesture_loop():
 
 
                 # Simulate a left-click
-                pyautogui.click(gui_cursor_x, gui_cursor_y)
+            if pinch_distance < pinch_threshold:
+                # Check if the pinch overlaps with any button
+                for button in [start_button, pause_button, reset_button, play_button, add_button, *music_inner_frame.winfo_children()]:
+                    x1, y1, x2, y2 = get_button_bbox(button)
+                    #gui_cursor_x = int(cursor_position[0] / frame.shape[1] * root.winfo_width())
+                    #gui_cursor_y = int(cursor_position[1] / frame.shape[0] * root.winfo_height())
+                    
+                    if x1 <= gui_cursor_x <= x2 and y1 <= gui_cursor_y <= y2:
+                        button.invoke()  # Simulate a button click
+                        break
                 print(f"Frame Size: {frame.shape[1]}x{frame.shape[0]}")
                 print(f"GUI Size: {root.winfo_width()}x{root.winfo_height()}")
                 print(f"Mapped Cursor Position: ({gui_cursor_x}, {gui_cursor_y})")
