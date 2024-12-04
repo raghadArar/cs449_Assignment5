@@ -227,21 +227,38 @@ music_files = {
     "Music 6": "winter-music-relaxing-piano-268028.mp3"
 }
 
+def change_button_color_music(m):
+    # Reset all button colors to default
+    for btn in music_buttons:
+        if btn.cget("text") == m:
+            btn.configure(fg_color="lightskyblue")
+        else:
+            btn.configure(fg_color="steelblue")  # Reset to default color
+    # Change the selected button color
+    
+
 # Function to play selected music
 def play_music(music_name):
     if music_name in music_files:
         # pygame.mixer.music.stop()  # Stop any currently playing music
+        change_button_color_music(music_name)
+        reset_button_colors_sound()
+        change_button_color(play_button)
         pygame.mixer.music.load(music_files[music_name])  # Load the selected music
         pygame.mixer.music.play()  # Play the music
         print(f"Playing: {music_name}")
     else:
         print(f"Music file for {music_name} not found!")
-
+    
+    
 # Function to pause music
 def pause_music():
     if pygame.mixer.music.get_busy():  # Check if music is playing
         pygame.mixer.music.pause()
         print("Music paused")
+    reset_button_colors_sound()    
+    change_button_color(pause_button)
+    
 
 # Function to resume music
 def resume_music():
@@ -249,14 +266,16 @@ def resume_music():
     print("Music resumed")
 
 # Update Music Buttons Section
+music_buttons = []
 music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5", "Music 6"]
 for music in music_options:
     music_button = ctk.CTkButton(
         music_inner_frame, text=music, width=100, height=100,
-        corner_radius=10, font=("Helvetica", 12),
+        corner_radius=10, font=("Helvetica", 12),fg_color="steelblue",
         command=lambda m=music: play_music(m)  # Play music on button click
     )
     music_button.pack(side="left", padx=5, pady=5)
+    music_buttons.append(music_button)
 
 # Update Sound Controls Section
 play_button.configure(command=lambda: (resume_music(), reset_button_colors_sound(),change_button_color(play_button)))  # Resume playback
@@ -430,8 +449,12 @@ def update_camera_feed():
             pinch_threshold = 0.05
 
             if pinch_distance < pinch_threshold and not gesture_cooldown_active:
-                for button in [start_button, pause_timer_button, reset_button, add_button, play_button, pause_button] + [
-                    music_button for music_button in music_inner_frame.winfo_children()]:
+                buttons = [
+                    start_button, pause_timer_button, reset_button, add_button, 
+                    play_button, pause_button
+                ] + music_buttons  # Include all music buttons in the list
+
+                for button in buttons:
                     x1, y1, x2, y2 = get_button_bbox(button)
                     if x1 <= gui_cursor_x <= x2 and y1 <= gui_cursor_y <= y2:
                         if last_invoked_button != button:  # Prevent repeated invocations
