@@ -20,6 +20,20 @@ root.title("Pomodoro Timer with Tasks and Music")
 root.geometry("450x650")
 root.configure(bg="grey")
 
+# Function to change the color of the buttons when clicked
+def change_button_color(button):
+    button.configure(fg_color="lightskyblue")  # Change color of clicked button
+
+def reset_button_colors():
+    # Reset the color of all buttons back to default color
+    start_button.configure(fg_color="steelblue")
+    pause_timer_button.configure(fg_color="steelblue")
+    reset_button.configure(fg_color="steelblue")
+
+def reset_button_colors_sound():
+    play_button.configure(fg_color="steelblue")  # Resume playback
+    pause_button.configure(fg_color="steelblue")
+
 # Scrollable container
 main_frame = ctk.CTkFrame(root, fg_color="white", bg_color="white")
 main_frame.pack(fill="both", expand=True)
@@ -39,13 +53,13 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
 # Timer Section
-timer_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10)
+timer_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10)
 timer_frame.pack(pady=10, padx=10, fill="x")
 
-timer_label = ctk.CTkLabel(timer_frame, text="Study Timer", font=("Helvetica", 16, "bold"), text_color="white")
+timer_label = ctk.CTkLabel(timer_frame, text="Study Timer", font=("Helvetica", 20, "bold"), text_color="white")
 timer_label.pack(pady=10)
 
-timer_canvas = Canvas(timer_frame, width=400, height=400, bg="darkgray", highlightthickness=0)
+timer_canvas = Canvas(timer_frame, width=400, height=400, bg="slategray", highlightthickness=0)
 timer_canvas.pack()
 
 
@@ -58,14 +72,14 @@ is_running = False
 timer_circle = timer_canvas.create_oval(
     center_x - timer_radius, center_y - timer_radius,
     center_x + timer_radius, center_y + timer_radius,
-    fill="darkgray", outline="lightgray", width=2
+    fill="slategray", outline="navyblue", width=2
 )
 timer_text = timer_canvas.create_text(
     center_x, center_y - 20, text=f"{default_session_time}:00",
-    font=("Helvetica", 32, "bold"), fill="white"
+    font=("Helvetica", 38, "bold"), fill="white"
 )
 status_text = timer_canvas.create_text(
-    center_x, center_y + 50, text="Paused", font=("Helvetica", 16), fill="yellow"
+    center_x, center_y + 50, text="Paused", font=("Helvetica", 20), fill="gold"
 )
 
 # Timer Controls
@@ -95,7 +109,9 @@ start_button = ctk.CTkButton(
     text="▶ Start",
     width=100, 
     height=50, 
-    command=lambda: (log_timer_action("Start"), start_timer())
+    font=("Helvetica", 16),
+    fg_color="steelblue",
+    command=lambda: (log_timer_action("Start"), start_timer(), reset_button_colors(),change_button_color(start_button))
 )
 start_button.pack(side="left", padx=5)
 
@@ -103,8 +119,10 @@ pause_timer_button = ctk.CTkButton(
     controls_frame, 
     text="⏸ Pause",
     width=100, 
-    height=50, 
-    command=lambda: (log_timer_action("Pause"), pause_timer())
+    height=50,
+    font=("Helvetica", 16), 
+    fg_color="steelblue",
+    command=lambda: (log_timer_action("Pause"), pause_timer(), reset_button_colors(),change_button_color(pause_timer_button))
 )
 pause_timer_button.pack(side="left", padx=5)
 
@@ -113,7 +131,9 @@ reset_button = ctk.CTkButton(
     text="⏹ Reset",
     width=100, 
     height=50, 
-    command=lambda: (log_timer_action("Reset"), reset_timer())
+    font=("Helvetica", 16),
+    fg_color="steelblue",
+    command=lambda: (log_timer_action("Reset"), reset_timer(), reset_button_colors(),change_button_color(reset_button))
 )
 reset_button.pack(side="left", padx=5)
 
@@ -134,15 +154,15 @@ def add_task():
     tasks_frame.configure(height=new_height)
 
 # Tasks Section
-tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10, height=50)
+tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10, height=50)
 tasks_frame.pack(pady=10, padx=10, fill="x")
 
 # Header frame for title and button
-header_frame = ctk.CTkFrame(tasks_frame, fg_color="darkgray", height=30)
+header_frame = ctk.CTkFrame(tasks_frame, fg_color="slategray", height=30)
 header_frame.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 # Tasks Label (Centered)
-tasks_label = ctk.CTkLabel(header_frame, text="Tasks", font=("Helvetica", 16, "bold"), text_color="white")
+tasks_label = ctk.CTkLabel(header_frame, text="Tasks", font=("Helvetica", 20, "bold"), text_color="white")
 tasks_label.place(relx=0.5, rely=0.5, anchor="center")  
 
 # Add Button (Top-right)
@@ -152,46 +172,46 @@ add_button = ctk.CTkButton(header_frame, text="+", width=35, height=35, corner_r
 add_button.place(relx=0.99, rely=0.5, anchor="e")  # Top-right corner
 
 # Frame for task items
-tasks_frame_inner = ctk.CTkFrame(tasks_frame, fg_color="darkgray", height=0)  
+tasks_frame_inner = ctk.CTkFrame(tasks_frame, fg_color="slategray", height=0)  
 tasks_frame_inner.pack(fill="x", padx=20, pady=10)
 
 # Task List
 task_list = []
 
 # Music Section (with Sound Controls)
-music_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=10)
+music_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10)
 music_frame.pack(pady=10, padx=10, fill="x")
 
-music_label = ctk.CTkLabel(music_frame, text="Music", font=("Helvetica", 16, "bold"), text_color="white")
+music_label = ctk.CTkLabel(music_frame, text="Music", font=("Helvetica", 20, "bold"), text_color="white")
 music_label.pack(pady=10)
 
 # Sound Controls
-sound_controls = ctk.CTkFrame(music_frame, fg_color="darkgray", corner_radius=5)
+sound_controls = ctk.CTkFrame(music_frame, fg_color="slategray", corner_radius=5)
 sound_controls.pack(pady=10)
 
-play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=40, command=lambda: print("Play clicked"))
+play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=40, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Play clicked"))
 play_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=40, command=lambda: print("Pause clicked"))
+pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=40, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Pause clicked"))
 pause_button.pack(side="left", padx=5)
 
 # stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
 # stop_button.pack(side="left", padx=5)
 
 # Spacer to add space between controls and the music list
-spacer = ctk.CTkFrame(music_frame, fg_color="darkgray", height=5)
+spacer = ctk.CTkFrame(music_frame, fg_color="slategray", height=5)
 spacer.pack(fill="x", pady=5)
 
 # Music List Section
 
-music_canvas = Canvas(music_frame, height=200, bg="darkgray", highlightthickness=0)
+music_canvas = Canvas(music_frame, height=200, bg="slategray", highlightthickness=0)
 music_canvas.pack(fill="x")
 
 music_scrollbar = Scrollbar(music_frame, orient=HORIZONTAL, command=music_canvas.xview)
 music_scrollbar.pack(fill="x")
 music_canvas.configure(xscrollcommand=music_scrollbar.set)
 
-music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="darkgray")
+music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="slategray")
 music_canvas.create_window((0, 0), window=music_inner_frame, anchor="nw")
 
 # Initialize the mixer for music playback
@@ -204,7 +224,7 @@ music_files = {
     "Music 3": "black-box-the-crew-129428.mp3",
     "Music 4": "lofi-study-calm-peaceful-chill-hop-112191.mp3",
     "Music 5": "study-music-181044.mp3",
-    "Music 6": "study-music-181044.mp3"
+    "Music 6": "winter-music-relaxing-piano-268028.mp3"
 }
 
 # Function to play selected music
@@ -228,11 +248,6 @@ def resume_music():
     pygame.mixer.music.unpause()
     print("Music resumed")
 
-# # Function to stop music
-# def stop_music():
-#     pygame.mixer.music.stop()
-#     print("Music stopped")
-
 # Update Music Buttons Section
 music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5", "Music 6"]
 for music in music_options:
@@ -244,8 +259,8 @@ for music in music_options:
     music_button.pack(side="left", padx=5, pady=5)
 
 # Update Sound Controls Section
-play_button.configure(command=lambda: resume_music())  # Resume playback
-pause_button.configure(command=lambda: pause_music())  # Pause playback
+play_button.configure(command=lambda: (resume_music(), reset_button_colors_sound(),change_button_color(play_button)))  # Resume playback
+pause_button.configure(command=lambda: (pause_music(), reset_button_colors_sound(),change_button_color(pause_button)))  # Pause playback
 # stop_button.configure(command=lambda: stop_music())  # Stop playback
 
 music_inner_frame.update_idletasks()
@@ -275,13 +290,13 @@ def update_timer():
 def start_timer():
     global is_running
     is_running = True
-    timer_canvas.itemconfig(status_text, text="Running", fill="green")
+    timer_canvas.itemconfig(status_text, text="Running", fill="darkgreen")
     update_timer()
 
 def pause_timer():
     global is_running
     is_running = False
-    timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
+    timer_canvas.itemconfig(status_text, text="Paused", fill="gold")
 
 def reset_timer():
     global remaining_time, is_running
@@ -289,7 +304,7 @@ def reset_timer():
     remaining_time = default_session_time * 60
     minutes, seconds = divmod(remaining_time, 60)
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
-    timer_canvas.itemconfig(status_text, text="Reset Successful", fill="green")
+    timer_canvas.itemconfig(status_text, text="Reset Successful", fill="darkgreen")
 
 
 
