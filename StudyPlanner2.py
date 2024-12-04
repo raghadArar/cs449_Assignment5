@@ -6,6 +6,7 @@ import mediapipe as mp
 import threading
 import time
 from PIL import Image, ImageTk
+import pygame
 
 # Initialize MediaPipe hand detector
 mp_hands = mp.solutions.hands
@@ -16,7 +17,7 @@ mp_drawing = mp.solutions.drawing_utils
 ctk.set_appearance_mode("dark")
 root = ctk.CTk()
 root.title("Pomodoro Timer with Tasks and Music")
-root.geometry("500x700")
+root.geometry("450x650")
 root.configure(bg="grey")
 
 # Scrollable container
@@ -68,17 +69,54 @@ status_text = timer_canvas.create_text(
 )
 
 # Timer Controls
+# controls_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=5)
+# controls_frame.pack(pady=10)
+
+# start_button = ctk.CTkButton(controls_frame, text="▶ Start",width=100,height=50, command=lambda: start_timer())
+# start_button.pack(side="left", padx=5)
+
+# pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", width=100,height=50,command=lambda: pause_timer())
+# pause_button.pack(side="left", padx=5)
+
+# reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", width=100,height=50,command=lambda: reset_timer())
+# reset_button.pack(side="left", padx=5)
+
+# Function to log timer control actions
+def log_timer_action(action):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    print(f"[{timestamp}] {action} button pressed")
+
+# Timer Controls (Updated with logging)
 controls_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=5)
 controls_frame.pack(pady=10)
 
-start_button = ctk.CTkButton(controls_frame, text="▶ Start",width=100,height=50, command=lambda: start_timer())
+start_button = ctk.CTkButton(
+    controls_frame, 
+    text="▶ Start",
+    width=100, 
+    height=50, 
+    command=lambda: (log_timer_action("Start"), start_timer())
+)
 start_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", width=100,height=50,command=lambda: pause_timer())
-pause_button.pack(side="left", padx=5)
+pause_timer_button = ctk.CTkButton(
+    controls_frame, 
+    text="⏸ Pause",
+    width=100, 
+    height=50, 
+    command=lambda: (log_timer_action("Pause"), pause_timer())
+)
+pause_timer_button.pack(side="left", padx=5)
 
-reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", width=100,height=50,command=lambda: reset_timer())
+reset_button = ctk.CTkButton(
+    controls_frame, 
+    text="⏹ Reset",
+    width=100, 
+    height=50, 
+    command=lambda: (log_timer_action("Reset"), reset_timer())
+)
 reset_button.pack(side="left", padx=5)
+
 
 # Function to add a new task
 def add_task():
@@ -100,18 +138,18 @@ tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="darkgray", corner_radius=
 tasks_frame.pack(pady=10, padx=10, fill="x")
 
 # Header frame for title and button
-header_frame = ctk.CTkFrame(tasks_frame, fg_color="darkgray", height=20)
-header_frame.pack(fill="x", padx=30, pady=5, ipady=5)  
+header_frame = ctk.CTkFrame(tasks_frame, fg_color="darkgray", height=30)
+header_frame.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 # Tasks Label (Centered)
 tasks_label = ctk.CTkLabel(header_frame, text="Tasks", font=("Helvetica", 16, "bold"), text_color="white")
 tasks_label.place(relx=0.5, rely=0.5, anchor="center")  
 
 # Add Button (Top-right)
-add_button = ctk.CTkButton(header_frame, text="+", width=30, height=30, corner_radius=5,
+add_button = ctk.CTkButton(header_frame, text="+", width=35, height=35, corner_radius=35,
                            fg_color=start_button._fg_color,  
                            text_color="white", command=add_task)
-add_button.place(relx=0.95, rely=0.5, anchor="e")  # Top-right corner
+add_button.place(relx=0.99, rely=0.5, anchor="e")  # Top-right corner
 
 # Frame for task items
 tasks_frame_inner = ctk.CTkFrame(tasks_frame, fg_color="darkgray", height=0)  
@@ -131,20 +169,21 @@ music_label.pack(pady=10)
 sound_controls = ctk.CTkFrame(music_frame, fg_color="darkgray", corner_radius=5)
 sound_controls.pack(pady=10)
 
-play_button = ctk.CTkButton(sound_controls, text="▶ Play", command=lambda: print("Play clicked"))
+play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=40, command=lambda: print("Play clicked"))
 play_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", command=lambda: print("Pause clicked"))
+pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=40, command=lambda: print("Pause clicked"))
 pause_button.pack(side="left", padx=5)
 
-stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
-stop_button.pack(side="left", padx=5)
+# stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
+# stop_button.pack(side="left", padx=5)
 
 # Spacer to add space between controls and the music list
 spacer = ctk.CTkFrame(music_frame, fg_color="darkgray", height=5)
 spacer.pack(fill="x", pady=5)
 
 # Music List Section
+
 music_canvas = Canvas(music_frame, height=200, bg="darkgray", highlightthickness=0)
 music_canvas.pack(fill="x")
 
@@ -155,14 +194,63 @@ music_canvas.configure(xscrollcommand=music_scrollbar.set)
 music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="darkgray")
 music_canvas.create_window((0, 0), window=music_inner_frame, anchor="nw")
 
-music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5"]
+# Initialize the mixer for music playback
+pygame.mixer.init()
+
+# Dictionary to map music button names to file paths
+music_files = {
+    "Music 1": "relaxing-piano-lo-fi-music-268029.mp3",  # Replace with actual file paths
+    "Music 2": "winter-music-relaxing-piano-268028.mp3",
+    "Music 3": "black-box-the-crew-129428.mp3",
+    "Music 4": "lofi-study-calm-peaceful-chill-hop-112191.mp3",
+    "Music 5": "study-music-181044.mp3",
+    "Music 6": "study-music-181044.mp3",
+    "Music 7": "study-music-181044.mp3",
+    "Music 8": "study-music-181044.mp3",
+    "Music 9": "study-music-181044.mp3",
+    "Music 10": "study-music-181044.mp3",
+}
+
+# Function to play selected music
+def play_music(music_name):
+    if music_name in music_files:
+        # pygame.mixer.music.stop()  # Stop any currently playing music
+        pygame.mixer.music.load(music_files[music_name])  # Load the selected music
+        pygame.mixer.music.play()  # Play the music
+        print(f"Playing: {music_name}")
+    else:
+        print(f"Music file for {music_name} not found!")
+
+# Function to pause music
+def pause_music():
+    if pygame.mixer.music.get_busy():  # Check if music is playing
+        pygame.mixer.music.pause()
+        print("Music paused")
+
+# Function to resume music
+def resume_music():
+    pygame.mixer.music.unpause()
+    print("Music resumed")
+
+# # Function to stop music
+# def stop_music():
+#     pygame.mixer.music.stop()
+#     print("Music stopped")
+
+# Update Music Buttons Section
+music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5", "Music 6", "Music 7", "Music 8", "Music 9", "Music 10"]
 for music in music_options:
     music_button = ctk.CTkButton(
         music_inner_frame, text=music, width=100, height=100,
         corner_radius=10, font=("Helvetica", 12),
-        command=lambda m=music: print(f"{m} selected")
+        command=lambda m=music: play_music(m)  # Play music on button click
     )
     music_button.pack(side="left", padx=5, pady=5)
+
+# Update Sound Controls Section
+play_button.configure(command=lambda: resume_music())  # Resume playback
+pause_button.configure(command=lambda: pause_music())  # Pause playback
+# stop_button.configure(command=lambda: stop_music())  # Stop playback
 
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
@@ -171,7 +259,7 @@ cursor_canvas = Canvas(root, bg="grey", highlightthickness=0, width=20, height=2
 cursor_canvas.place(x=0, y=0)  # Start at the top-left corner
 
 # Draw the cursor (a circle)
-cursor_id = cursor_canvas.create_oval(2, 2, 18, 18, fill="red", outline="black")
+cursor_id = cursor_canvas.create_rectangle(2, 2, 18, 18, fill="red", outline="black")
 
 # Timer Functions
 def update_timer():
@@ -205,7 +293,7 @@ def reset_timer():
     remaining_time = default_session_time * 60
     minutes, seconds = divmod(remaining_time, 60)
     timer_canvas.itemconfig(timer_text, text=f"{minutes:02}:{seconds:02}")
-    timer_canvas.itemconfig(status_text, text="Paused", fill="yellow")
+    timer_canvas.itemconfig(status_text, text="Reset Successful", fill="green")
 
 
 
@@ -215,8 +303,15 @@ if not cap.isOpened():
     print("Error: Camera not accessible")
     root.quit()
 
+# Global variables for gesture debouncing
+last_invoked_button = None
+gesture_cooldown_active = False
+last_finger_position = None
+
 def update_camera_feed():
     """Update the camera feed and process gestures in the background."""
+    global last_invoked_button, gesture_cooldown_active,last_finger_position
+
     ret, frame = cap.read()
     if not ret:
         print("Error: Failed to capture frame")
@@ -228,6 +323,14 @@ def update_camera_feed():
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(frame_rgb)
 
+    # Draw the landmarks on the frame
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+
+    cv2.imshow("Camera Feed", frame)
+
     gui_cursor_x = gui_cursor_y = None  # Initialize GUI cursor variables
 
     if results.multi_hand_landmarks:
@@ -236,6 +339,13 @@ def update_camera_feed():
 
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+            pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
+            ring_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
+
+            # Get the landmarks of the MCP joints for ring and pinky (used to detect folding)
+            pinky_base = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
+            ring_base = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
 
             # Calculate cursor position
             cursor_x = int(index_tip.x * frame.shape[1])
@@ -243,15 +353,80 @@ def update_camera_feed():
             gui_cursor_x = int(cursor_x / frame.shape[1] * root.winfo_width())
             gui_cursor_y = int(cursor_y / frame.shape[0] * root.winfo_height())
 
+
+            # Gesture: Detecting Scroll (Index and Middle Fingers Extended Horizontally)
+            # Ensure middle finger is above index finger and the fingers are close horizontally
+            if middle_tip.y < index_tip.y and abs(index_tip.x - middle_tip.x) < 0.05:
+                # Additional check to ensure the index and middle fingers are in a more vertical alignment
+                if abs(middle_tip.x - index_tip.x) < 0.01:  # Fingers are aligned more vertically (adjust the threshold as necessary)
+                    # Check if pinky and ring fingers are folded and pointing in the opposite direction (towards the right)
+                    if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
+                    pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
+                        
+                        # Update the last finger position only if it's not set yet
+                        if last_finger_position is None:
+                            last_finger_position = (middle_tip.x, middle_tip.y)
+
+                        # Calculate the vertical movement (scrolling)
+                        if last_finger_position:
+                            # Calculate the difference in y-direction (inverted direction for opposite scroll)
+                            y_diff = last_finger_position[1] - middle_tip.y
+                            
+                            # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
+                            scroll_delta = y_diff * 40  # Adjust multiplier to make scroll less jumpy
+
+                            # Limit the scroll delta to avoid large jumps
+                            scroll_delta = max(min(scroll_delta, 20), -20)  # Limits scroll movement to a max of 20 units per frame
+
+                            # Update the scroll position if the movement is significant
+                            if abs(scroll_delta) > 1:
+                                canvas.yview_scroll(int(scroll_delta), "units")  # Vertical scroll
+
+                        # Update last position for future calculation
+                        last_finger_position = (middle_tip.x, middle_tip.y)
+
+
+            # # Horizontal Scroll Detection
+            # if abs(index_tip.x - middle_tip.x) < 0.05 and middle_tip.y < index_tip.y:
+            #     # Check if pinky and ring fingers are folded and pointing downwards (towards the palm)
+            #     if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
+            #     pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
+                    
+            #         # Update the last finger position only if it's not set yet
+            #         if last_finger_position is None:
+            #             last_finger_position = (middle_tip.x, middle_tip.y)
+
+            #         # Calculate the horizontal movement (scrolling)
+            #         if last_finger_position:
+            #             # Calculate the difference in x-direction (inverted direction for opposite scroll)
+            #             x_diff = last_finger_position[0] - middle_tip.x
+                        
+            #             # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
+            #             scroll_delta = x_diff * 40  # Adjust multiplier to make scroll less jumpy
+
+            #             # Limit the scroll delta to avoid large jumps
+            #             scroll_delta = max(min(scroll_delta, 20), -20)  # Limits scroll movement to a max of 20 units per frame
+
+            #             # Update the scroll position if the movement is significant
+            #             if abs(scroll_delta) > 1:
+            #                 canvas.xview_scroll(int(scroll_delta), "units")  # Horizontal scroll
+
+            #         # Update last position for future calculation
+            #         last_finger_position = (middle_tip.x, middle_tip.y)
+
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.05
 
-            if pinch_distance < pinch_threshold:
-                for button in [start_button, pause_button, reset_button]:
+            if pinch_distance < pinch_threshold and not gesture_cooldown_active:
+                for button in [start_button, pause_timer_button, reset_button, add_button, play_button, pause_button] + [
+                    music_button for music_button in music_inner_frame.winfo_children()]:
                     x1, y1, x2, y2 = get_button_bbox(button)
                     if x1 <= gui_cursor_x <= x2 and y1 <= gui_cursor_y <= y2:
-                        button.invoke()  # Simulate a button click
+                        if last_invoked_button != button:  # Prevent repeated invocations
+                            last_invoked_button = button
+                            button.invoke()  # Simulate a button click
+                            start_gesture_cooldown()  # Start cooldown period
                         break
 
     # Update the cursor position dynamically in Tkinter
@@ -260,6 +435,19 @@ def update_camera_feed():
 
     # Schedule the next frame update
     root.after(10, update_camera_feed)
+
+def start_gesture_cooldown():
+    """Activate cooldown for gestures to avoid repeated invocations."""
+    global gesture_cooldown_active
+    gesture_cooldown_active = True
+    root.after(1000, reset_gesture_cooldown)  # Cooldown of 1 second
+
+def reset_gesture_cooldown():
+    """Reset gesture cooldown to allow new gestures."""
+    global gesture_cooldown_active, last_invoked_button
+    gesture_cooldown_active = False
+    last_invoked_button = None
+
 
 def get_button_bbox(button):
     """Calculate the bounding box of a button."""
@@ -284,3 +472,5 @@ update_camera_feed()
 
 # Run the Tkinter main loop
 root.mainloop()
+cap.release()
+cv2.destroyAllWindows()
