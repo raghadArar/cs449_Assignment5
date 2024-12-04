@@ -376,6 +376,8 @@ def update_camera_feed():
             # Get the landmarks of the MCP joints for ring and pinky (used to detect folding)
             pinky_base = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
             ring_base = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_MCP]
+            middle_base = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_MCP]
+            thumb_base = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_MCP]
 
             # Calculate cursor position
             cursor_x = int(index_tip.x * frame.shape[1])
@@ -386,34 +388,34 @@ def update_camera_feed():
 
             # Gesture: Detecting Scroll (Index and Middle Fingers Extended Horizontally)
             # Ensure middle finger is above index finger and the fingers are close horizontally
-            if middle_tip.y < index_tip.y and abs(index_tip.x - middle_tip.x) < 0.05:
+            #if middle_tip.y < index_tip.y and abs(index_tip.x - middle_tip.x) < 0.05:
                 # Additional check to ensure the index and middle fingers are in a more vertical alignment
-                if abs(middle_tip.x - index_tip.x) < 0.01:  # Fingers are aligned more vertically (adjust the threshold as necessary)
-                    # Check if pinky and ring fingers are folded and pointing in the opposite direction (towards the right)
-                    if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
-                    pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
-                        
-                        # Update the last finger position only if it's not set yet
-                        if last_finger_position is None:
-                            last_finger_position = (middle_tip.x, middle_tip.y)
+            #if abs(middle_tip.x - index_tip.x) < 0.01:  # Fingers are aligned more vertically (adjust the threshold as necessary)
+                # Check if pinky and ring fingers are folded and pointing in the opposite direction (towards the right)
+            if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and middle_tip.y > middle_base.y and \
+            pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x and middle_tip.x > index_tip.x:
+                
+                # Update the last finger position only if it's not set yet
+                if last_finger_position is None:
+                    last_finger_position = (index_tip.x, index_tip.y)
 
-                        # Calculate the vertical movement (scrolling)
-                        if last_finger_position:
-                            # Calculate the difference in y-direction (inverted direction for opposite scroll)
-                            y_diff = last_finger_position[1] - middle_tip.y
-                            
-                            # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
-                            scroll_delta = y_diff * 45  # Adjust multiplier to make scroll less jumpy
+                # Calculate the vertical movement (scrolling)
+                if last_finger_position:
+                    # Calculate the difference in y-direction (inverted direction for opposite scroll)
+                    y_diff = last_finger_position[1] - index_tip.y
+                    
+                    # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
+                    scroll_delta = y_diff * 40  # Adjust multiplier to make scroll less jumpy
 
-                            # Limit the scroll delta to avoid large jumps
-                            scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
+                    # Limit the scroll delta to avoid large jumps
+                    scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
 
-                            # Update the scroll position if the movement is significant
-                            if abs(scroll_delta) > 1:
-                                canvas.yview_scroll(int(scroll_delta), "units")  # Vertical scroll
+                    # Update the scroll position if the movement is significant
+                    if abs(scroll_delta) > 1:
+                        canvas.yview_scroll(int(scroll_delta), "units")  # Vertical scroll
 
-                        # Update last position for future calculation
-                        last_finger_position = (middle_tip.x, middle_tip.y)
+                # Update last position for future calculation
+                last_finger_position = (index_tip.x, index_tip.y)
 
 
             # Horizontal Scroll Detection
