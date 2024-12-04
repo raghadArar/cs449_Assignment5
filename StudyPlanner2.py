@@ -53,13 +53,13 @@ canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
 # Timer Section
-timer_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10)
+timer_frame = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius=10)
 timer_frame.pack(pady=10, padx=10, fill="x")
 
 timer_label = ctk.CTkLabel(timer_frame, text="Study Timer", font=("Helvetica", 20, "bold"), text_color="white")
 timer_label.pack(pady=10)
 
-timer_canvas = Canvas(timer_frame, width=400, height=400, bg="slategray", highlightthickness=0)
+timer_canvas = Canvas(timer_frame, width=400, height=400, bg="lightgray", highlightthickness=0)
 timer_canvas.pack()
 
 
@@ -72,7 +72,7 @@ is_running = False
 timer_circle = timer_canvas.create_oval(
     center_x - timer_radius, center_y - timer_radius,
     center_x + timer_radius, center_y + timer_radius,
-    fill="slategray", outline="navyblue", width=2
+    fill="darkgray", outline="navyblue", width=2
 )
 timer_text = timer_canvas.create_text(
     center_x, center_y - 20, text=f"{default_session_time}:00",
@@ -154,11 +154,11 @@ def add_task():
     tasks_frame.configure(height=new_height)
 
 # Tasks Section
-tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10, height=50)
+tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius=10, height=50)
 tasks_frame.pack(pady=10, padx=10, fill="x")
 
 # Header frame for title and button
-header_frame = ctk.CTkFrame(tasks_frame, fg_color="slategray", height=30)
+header_frame = ctk.CTkFrame(tasks_frame, fg_color="lightgray", height=30)
 header_frame.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 # Tasks Label (Centered)
@@ -166,27 +166,27 @@ tasks_label = ctk.CTkLabel(header_frame, text="Tasks", font=("Helvetica", 20, "b
 tasks_label.place(relx=0.5, rely=0.5, anchor="center")  
 
 # Add Button (Top-right)
-add_button = ctk.CTkButton(header_frame, text="+", width=35, height=35, corner_radius=35,
-                           fg_color=start_button._fg_color,  
+add_button = ctk.CTkButton(header_frame, text="+", width=40, height=40, corner_radius=40,
+                           fg_color="steelblue",  font=("Helvetica", 10, "bold"),
                            text_color="white", command=add_task)
 add_button.place(relx=0.99, rely=0.5, anchor="e")  # Top-right corner
 
 # Frame for task items
-tasks_frame_inner = ctk.CTkFrame(tasks_frame, fg_color="slategray", height=0)  
+tasks_frame_inner = ctk.CTkFrame(tasks_frame, fg_color="lightgray", height=0)  
 tasks_frame_inner.pack(fill="x", padx=20, pady=10)
 
 # Task List
 task_list = []
 
 # Music Section (with Sound Controls)
-music_frame = ctk.CTkFrame(scrollable_frame, fg_color="slategray", corner_radius=10)
+music_frame = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius=10)
 music_frame.pack(pady=10, padx=10, fill="x")
 
 music_label = ctk.CTkLabel(music_frame, text="Music", font=("Helvetica", 20, "bold"), text_color="white")
 music_label.pack(pady=10)
 
 # Sound Controls
-sound_controls = ctk.CTkFrame(music_frame, fg_color="slategray", corner_radius=5)
+sound_controls = ctk.CTkFrame(music_frame, fg_color="lightgray", corner_radius=5)
 sound_controls.pack(pady=10)
 
 play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=40, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Play clicked"))
@@ -199,19 +199,19 @@ pause_button.pack(side="left", padx=5)
 # stop_button.pack(side="left", padx=5)
 
 # Spacer to add space between controls and the music list
-spacer = ctk.CTkFrame(music_frame, fg_color="slategray", height=5)
+spacer = ctk.CTkFrame(music_frame, fg_color="lightgray", height=5)
 spacer.pack(fill="x", pady=5)
 
 # Music List Section
 
-music_canvas = Canvas(music_frame, height=200, bg="slategray", highlightthickness=0)
+music_canvas = Canvas(music_frame, height=200, bg="lightgray", highlightthickness=0)
 music_canvas.pack(fill="x")
 
 music_scrollbar = Scrollbar(music_frame, orient=HORIZONTAL, command=music_canvas.xview)
 music_scrollbar.pack(fill="x")
 music_canvas.configure(xscrollcommand=music_scrollbar.set)
 
-music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="slategray")
+music_inner_frame = ctk.CTkFrame(music_canvas, fg_color="lightgray")
 music_canvas.create_window((0, 0), window=music_inner_frame, anchor="nw")
 
 # Initialize the mixer for music playback
