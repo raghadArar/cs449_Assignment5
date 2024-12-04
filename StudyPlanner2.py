@@ -204,11 +204,7 @@ music_files = {
     "Music 3": "black-box-the-crew-129428.mp3",
     "Music 4": "lofi-study-calm-peaceful-chill-hop-112191.mp3",
     "Music 5": "study-music-181044.mp3",
-    "Music 6": "study-music-181044.mp3",
-    "Music 7": "study-music-181044.mp3",
-    "Music 8": "study-music-181044.mp3",
-    "Music 9": "study-music-181044.mp3",
-    "Music 10": "study-music-181044.mp3",
+    "Music 6": "study-music-181044.mp3"
 }
 
 # Function to play selected music
@@ -238,7 +234,7 @@ def resume_music():
 #     print("Music stopped")
 
 # Update Music Buttons Section
-music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5", "Music 6", "Music 7", "Music 8", "Music 9", "Music 10"]
+music_options = ["Music 1", "Music 2", "Music 3", "Music 4", "Music 5", "Music 6"]
 for music in music_options:
     music_button = ctk.CTkButton(
         music_inner_frame, text=music, width=100, height=100,
@@ -373,10 +369,10 @@ def update_camera_feed():
                             y_diff = last_finger_position[1] - middle_tip.y
                             
                             # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
-                            scroll_delta = y_diff * 40  # Adjust multiplier to make scroll less jumpy
+                            scroll_delta = y_diff * 45  # Adjust multiplier to make scroll less jumpy
 
                             # Limit the scroll delta to avoid large jumps
-                            scroll_delta = max(min(scroll_delta, 20), -20)  # Limits scroll movement to a max of 20 units per frame
+                            scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
 
                             # Update the scroll position if the movement is significant
                             if abs(scroll_delta) > 1:
@@ -386,33 +382,33 @@ def update_camera_feed():
                         last_finger_position = (middle_tip.x, middle_tip.y)
 
 
-            # # Horizontal Scroll Detection
-            # if abs(index_tip.x - middle_tip.x) < 0.05 and middle_tip.y < index_tip.y:
-            #     # Check if pinky and ring fingers are folded and pointing downwards (towards the palm)
-            #     if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
-            #     pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
+            # Horizontal Scroll Detection
+            if abs(index_tip.x - middle_tip.x) < 0.05 and middle_tip.y < index_tip.y:
+                # Check if pinky and ring fingers are folded and pointing downwards (towards the palm)
+                if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
+                pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
                     
-            #         # Update the last finger position only if it's not set yet
-            #         if last_finger_position is None:
-            #             last_finger_position = (middle_tip.x, middle_tip.y)
+                    # Update the last finger position only if it's not set yet
+                    if last_finger_position is None:
+                        last_finger_position = (middle_tip.x, middle_tip.y)
 
-            #         # Calculate the horizontal movement (scrolling)
-            #         if last_finger_position:
-            #             # Calculate the difference in x-direction (inverted direction for opposite scroll)
-            #             x_diff = last_finger_position[0] - middle_tip.x
+                    # Calculate the horizontal movement (scrolling)
+                    if last_finger_position:
+                        # Calculate the difference in x-direction (inverted direction for opposite scroll)
+                        x_diff = last_finger_position[0] - middle_tip.x
                         
-            #             # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
-            #             scroll_delta = x_diff * 40  # Adjust multiplier to make scroll less jumpy
+                        # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
+                        scroll_delta = x_diff * 70  # Adjust multiplier to make scroll less jumpy
 
-            #             # Limit the scroll delta to avoid large jumps
-            #             scroll_delta = max(min(scroll_delta, 20), -20)  # Limits scroll movement to a max of 20 units per frame
+                        # Limit the scroll delta to avoid large jumps
+                        scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
 
-            #             # Update the scroll position if the movement is significant
-            #             if abs(scroll_delta) > 1:
-            #                 canvas.xview_scroll(int(scroll_delta), "units")  # Horizontal scroll
+                        # Update the scroll position if the movement is significant
+                        if abs(scroll_delta) > 1:
+                            music_canvas.xview_scroll(int(scroll_delta), "units") # Horizontal scroll
 
-            #         # Update last position for future calculation
-            #         last_finger_position = (middle_tip.x, middle_tip.y)
+                    # Update last position for future calculation
+                    last_finger_position = (middle_tip.x, middle_tip.y)
 
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
