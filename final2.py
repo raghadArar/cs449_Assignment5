@@ -226,6 +226,13 @@ music_files = {
     "Music 5": "study-music-181044.mp3",
     "Music 6": "winter-music-relaxing-piano-268028.mp3"
 }
+# Tasks Section
+tasks_frame2 = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius=10, height=50)
+tasks_frame2.pack(pady=10, padx=10, fill="x")
+
+# Header frame for title and button
+header_frame2 = ctk.CTkFrame(tasks_frame2, fg_color="lightgray", height=40)
+header_frame2.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 def change_button_color_music(m):
     # Reset all button colors to default
@@ -399,51 +406,72 @@ def update_camera_feed():
             ring_extended = is_finger_extended(hand_landmarks, 16, 14)
             pinky_extended = is_finger_extended(hand_landmarks, 20, 18)
 
-            if (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
-                # Check if index and middle fingers are slightly horizontal
-                horizontal_threshold = 0.05  # Adjust this value as needed for sensitivity
-                x_diff = abs(index_tip.y - middle_tip.y)
-                
-                if x_diff > horizontal_threshold:  # Ensure fingers are not fully vertical
-                    # Initialize last positions if not set
-                    if last_finger_position is None:
-                        last_finger_position = {'x': index_tip.x, 'y': index_tip.y}
-
-                    if last_finger_position:
-                        # Vertical scroll
-                        y_diff = last_finger_position['y'] - index_tip.y
-                        scroll_delta_y = y_diff * 50
-                        scroll_delta_y = max(min(scroll_delta_y, 30), -30)
-
-                        if abs(scroll_delta_y) > 1:
-                            print("in vertical")
-                            canvas.yview_scroll(int(scroll_delta_y), "units")
-                        
-                        # Update last finger position
-                        last_finger_position['x'] = index_tip.x
-                        last_finger_position['y'] = index_tip.y
-
             # Existing conditions to ensure fingers are extended/folded appropriately
-            elif (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active):
+            if (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active):
                 
                 # Initialize last positions if not set
                 if last_finger_position_m is None:
-                    last_finger_position_m = {'x': ring_tip.x, 'y': ring_tip.y}
+                    last_finger_position_m = {
+                        'index_x': index_tip.x,
+                        'middle_x': middle_tip.x,
+                        'ring_x': ring_tip.x
+                    }
 
                 # Horizontal scroll
                 if last_finger_position_m:
-                    x_diff =  last_finger_position_m['x']-ring_tip.x
-                    scroll_delta_x = x_diff * 50
-                    scroll_delta_x = max(min(scroll_delta_x, 40), -40)
+                    # Calculate average horizontal movement
+                    x_diff_index = last_finger_position_m['index_x'] - index_tip.x
+                    x_diff_middle = last_finger_position_m['middle_x'] - middle_tip.x
+                    x_diff_ring = last_finger_position_m['ring_x'] - ring_tip.x
+                    avg_x_diff = (x_diff_index + x_diff_middle + x_diff_ring) / 3
 
-                    if abs(scroll_delta_x) > 1:
+                    scroll_delta_x = avg_x_diff * 40  # Scale factor for scrolling
+                    scroll_delta_x = max(min(scroll_delta_x, 60), -60)
+
+                    print("avg x diff",avg_x_diff)
+                    movement_threshold_min = 0.02  # Minimum movement threshold
+                    movement_threshold_max = 0.3   # Maximum movement threshold
+                    if movement_threshold_min < abs(avg_x_diff) < movement_threshold_max:
                         print("in horizontal")
-                        music_canvas.xview_scroll(int(scroll_delta_x), "units")  # Added closing parenthesis
+                        music_canvas.xview_scroll(int(scroll_delta_x), "units")
 
-                    # Update last finger position
-                    last_finger_position_m['x'] = ring_tip.x
-                    last_finger_position_m['y'] = ring_tip.y
+                    # Update last_finger_position_m with current coordinates
+                    last_finger_position_m['index_x'] = index_tip.x
+                    last_finger_position_m['middle_x'] = middle_tip.x
+                    last_finger_position_m['ring_x'] = ring_tip.x
 
+            elif (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
+                 # Ensure fingers are not fully vertical
+                    # Initialize last positions if not set
+                    if last_finger_position is None:
+                        last_finger_position = {
+                            'index_y': index_tip.y,
+                            'middle_y': middle_tip.y,   
+                        }
+
+                    if last_finger_position:
+                        # Calculate average vertical movement
+                        y_diff_index = last_finger_position['index_y'] - index_tip.y
+                        y_diff_middle = last_finger_position['middle_y'] - middle_tip.y
+                        avg_y_diff = (y_diff_index + y_diff_middle ) / 2
+
+                        scroll_delta_y = avg_y_diff * 20  # Scale factor for scrolling
+                        scroll_delta_y = max(min(scroll_delta_y, 70), -70)
+
+                        # Add a movement threshold to avoid unintentional scrolling
+                        print("avg y diff",avg_y_diff)
+                        movement_threshold = 0.4  # Adjusted for the value that appears when not moving
+                        if abs(avg_y_diff) < movement_threshold:  # Only scroll if movement is significant
+                            scroll_delta_y = avg_y_diff * 20  # Scale factor for scrolling
+                            scroll_delta_y = max(min(scroll_delta_y, 60), -60)
+
+                            if abs(scroll_delta_y) > 1:
+                                print("in vertical")
+                                canvas.yview_scroll(int(scroll_delta_y), "units")
+
+                            # Update last finger positions
+                            last_finger_position['index_y'] = index_tip.y
+                            last_finger_position['middle_y'] = middle_tip.y
             
             
             # Gesture: Pinch Detection
