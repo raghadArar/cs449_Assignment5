@@ -326,7 +326,9 @@ def reset_timer():
     timer_canvas.itemconfig(status_text, text="Reset Successful", fill="darkgreen")
 
 
-
+# Function to determine if a finger is extended.
+def is_finger_extended(hand_landmarks, finger_tip_id, finger_mcp_id):
+    return hand_landmarks.landmark[finger_tip_id].y < hand_landmarks.landmark[finger_mcp_id].y
 # Initialize OpenCV capture
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -337,10 +339,23 @@ if not cap.isOpened():
 last_invoked_button = None
 gesture_cooldown_active = False
 last_finger_position = None
+last_finger_position_m = None
+# Function to initialize finger positions if not set
+def initialize_finger_position(last_pos, current_tip):
+    if last_pos is None:
+        return {'x': current_tip.x, 'y': current_tip.y}
+    return last_pos
+
+# Function to calculate scroll delta
+def calculate_scroll_delta(current, last, scale=45, clamp=30):
+    diff = current - last
+    delta = diff * scale
+    delta = max(min(delta, clamp), -clamp)
+    return delta
 
 def update_camera_feed():
     """Update the camera feed and process gestures in the background."""
-    global last_invoked_button, gesture_cooldown_active,last_finger_position
+    global last_invoked_button, gesture_cooldown_active,last_finger_position,last_finger_position_m
 
     ret, frame = cap.read()
     if not ret:
@@ -385,67 +400,54 @@ def update_camera_feed():
             gui_cursor_x = int(cursor_x / frame.shape[1] * root.winfo_width())
             gui_cursor_y = int(cursor_y / frame.shape[0] * root.winfo_height())
 
+            # Check finger states.
+            index_extended = is_finger_extended(hand_landmarks, 8, 5)
+            middle_extended = is_finger_extended(hand_landmarks, 12, 9)
+            ring_extended = is_finger_extended(hand_landmarks, 16, 13)
+            pinky_extended = is_finger_extended(hand_landmarks, 20, 17)
+            # Existing conditions to ensure fingers are extended/folded appropriately
+            # Existing conditions to ensure fingers are extended/folded appropriately
+            if (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
 
-            # Gesture: Detecting Scroll (Index and Middle Fingers Extended Horizontally)
-            # Ensure middle finger is above index finger and the fingers are close horizontally
-            #if middle_tip.y < index_tip.y and abs(index_tip.x - middle_tip.x) < 0.05:
-                # Additional check to ensure the index and middle fingers are in a more vertical alignment
-            #if abs(middle_tip.x - index_tip.x) < 0.01:  # Fingers are aligned more vertically (adjust the threshold as necessary)
-                # Check if pinky and ring fingers are folded and pointing in the opposite direction (towards the right)
-            if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and middle_tip.y > middle_base.y and \
-            pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x and middle_tip.x > index_tip.x:
-                
-                # Update the last finger position only if it's not set yet
+                # Initialize last positions if not set
                 if last_finger_position is None:
-                    last_finger_position = (index_tip.x, index_tip.y)
+                    last_finger_position = {'x': index_tip.x, 'y': index_tip.y}
 
-                # Calculate the vertical movement (scrolling)
                 if last_finger_position:
-                    # Calculate the difference in y-direction (inverted direction for opposite scroll)
-                    y_diff = last_finger_position[1] - index_tip.y
+                    # Vertical scroll
+                    y_diff = last_finger_position['y'] - index_tip.y
+                    scroll_delta_y = y_diff * 45
+                    scroll_delta_y = max(min(scroll_delta_y, 30), -30)
                     
-                    # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
-                    scroll_delta = y_diff * 40  # Adjust multiplier to make scroll less jumpy
 
-                    # Limit the scroll delta to avoid large jumps
-                    scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
+                    if abs(scroll_delta_y) > 1:
+                        canvas.yview_scroll(int(scroll_delta_y), "units")
+                    # Update last finger position
+                    last_finger_position['x'] = index_tip.x
+                    last_finger_position['y'] = index_tip.y
 
-                    # Update the scroll position if the movement is significant
-                    if abs(scroll_delta) > 1:
-                        canvas.yview_scroll(int(scroll_delta), "units")  # Vertical scroll
+            # Existing conditions to ensure fingers are extended/folded appropriately
+            if (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active):
 
-                # Update last position for future calculation
-                last_finger_position = (index_tip.x, index_tip.y)
+                # Initialize last positions if not set
+                if last_finger_position_m is None:
+                    last_finger_position_m = {'x': middle_tip.x, 'y': middle_tip.y}
 
+                # Horizontal scroll
+                if last_finger_position_m:
+                    x_diff = middle_tip.x - last_finger_position_m['x']
+                    scroll_delta_x = x_diff * 45
+                    scroll_delta_x = max(min(scroll_delta_x, 30), -30)
 
-            # Horizontal Scroll Detection
-            if abs(index_tip.x - middle_tip.x) < 0.05 and middle_tip.y < index_tip.y:
-                # Check if pinky and ring fingers are folded and pointing downwards (towards the palm)
-                if pinky_tip.y > pinky_base.y and ring_tip.y > ring_base.y and \
-                pinky_tip.x > index_tip.x and ring_tip.x > index_tip.x:
-                    
-                    # Update the last finger position only if it's not set yet
-                    if last_finger_position is None:
-                        last_finger_position = (middle_tip.x, middle_tip.y)
+                    if abs(scroll_delta_x) > 1:
+                        music_canvas.xview_scroll(int(scroll_delta_x), "units")  # Added closing parenthesis
 
-                    # Calculate the horizontal movement (scrolling)
-                    if last_finger_position:
-                        # Calculate the difference in x-direction (inverted direction for opposite scroll)
-                        x_diff = last_finger_position[0] - middle_tip.x
-                        
-                        # Apply scaling factor to adjust the scroll speed smoothly (smaller multiplier)
-                        scroll_delta = x_diff * 70  # Adjust multiplier to make scroll less jumpy
+                    # Update last finger position
+                    last_finger_position_m['x'] = middle_tip.x
+                    last_finger_position_m['y'] = middle_tip.y
 
-                        # Limit the scroll delta to avoid large jumps
-                        scroll_delta = max(min(scroll_delta, 30), -30)  # Limits scroll movement to a max of 20 units per frame
-
-                        # Update the scroll position if the movement is significant
-                        if abs(scroll_delta) > 1:
-                            music_canvas.xview_scroll(int(scroll_delta), "units") # Horizontal scroll
-
-                    # Update last position for future calculation
-                    last_finger_position = (middle_tip.x, middle_tip.y)
-
+           
+            
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.05
