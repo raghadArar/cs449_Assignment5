@@ -158,7 +158,7 @@ tasks_frame = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius
 tasks_frame.pack(pady=10, padx=10, fill="x")
 
 # Header frame for title and button
-header_frame = ctk.CTkFrame(tasks_frame, fg_color="lightgray", height=30)
+header_frame = ctk.CTkFrame(tasks_frame, fg_color="lightgray", height=40)
 header_frame.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 # Tasks Label (Centered)
@@ -166,8 +166,8 @@ tasks_label = ctk.CTkLabel(header_frame, text="Tasks", font=("Helvetica", 20, "b
 tasks_label.place(relx=0.5, rely=0.5, anchor="center")  
 
 # Add Button (Top-right)
-add_button = ctk.CTkButton(header_frame, text="+", width=40, height=40, corner_radius=40,
-                           fg_color="steelblue",  font=("Helvetica", 10, "bold"),
+add_button = ctk.CTkButton(header_frame, text="+", width=45, height=45, corner_radius=45,
+                           fg_color="steelblue",  font=("Helvetica", 20, "bold"),
                            text_color="white", command=add_task)
 add_button.place(relx=0.99, rely=0.5, anchor="e")  # Top-right corner
 
@@ -189,10 +189,10 @@ music_label.pack(pady=10)
 sound_controls = ctk.CTkFrame(music_frame, fg_color="lightgray", corner_radius=5)
 sound_controls.pack(pady=10)
 
-play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=40, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Play clicked"))
+play_button = ctk.CTkButton(sound_controls, text="▶ Play", width=120, height=50, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Play clicked"))
 play_button.pack(side="left", padx=5)
 
-pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=40, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Pause clicked"))
+pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=50, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Pause clicked"))
 pause_button.pack(side="left", padx=5)
 
 # stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
@@ -401,30 +401,10 @@ def update_camera_feed():
             gui_cursor_y = int(cursor_y / frame.shape[0] * root.winfo_height())
 
             # Check finger states.
-            index_extended = is_finger_extended(hand_landmarks, 8, 5)
-            middle_extended = is_finger_extended(hand_landmarks, 12, 9)
-            ring_extended = is_finger_extended(hand_landmarks, 16, 13)
-            pinky_extended = is_finger_extended(hand_landmarks, 20, 17)
-            # Existing conditions to ensure fingers are extended/folded appropriately
-            # Existing conditions to ensure fingers are extended/folded appropriately
-            if (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
-
-                # Initialize last positions if not set
-                if last_finger_position is None:
-                    last_finger_position = {'x': index_tip.x, 'y': index_tip.y}
-
-                if last_finger_position:
-                    # Vertical scroll
-                    y_diff = last_finger_position['y'] - index_tip.y
-                    scroll_delta_y = y_diff * 45
-                    scroll_delta_y = max(min(scroll_delta_y, 30), -30)
-                    
-
-                    if abs(scroll_delta_y) > 1:
-                        canvas.yview_scroll(int(scroll_delta_y), "units")
-                    # Update last finger position
-                    last_finger_position['x'] = index_tip.x
-                    last_finger_position['y'] = index_tip.y
+            index_extended = is_finger_extended(hand_landmarks, 8, 6)
+            middle_extended = is_finger_extended(hand_landmarks, 12, 10)
+            ring_extended = is_finger_extended(hand_landmarks, 16, 14)
+            pinky_extended = is_finger_extended(hand_landmarks, 20, 18)
 
             # Existing conditions to ensure fingers are extended/folded appropriately
             if (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active):
@@ -446,7 +426,25 @@ def update_camera_feed():
                     last_finger_position_m['x'] = middle_tip.x
                     last_finger_position_m['y'] = middle_tip.y
 
-           
+            # Existing conditions to ensure fingers are extended/folded appropriately
+            elif (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
+
+                # Initialize last positions if not set
+                if last_finger_position is None:
+                    last_finger_position = {'x': index_tip.x, 'y': index_tip.y}
+
+                if last_finger_position:
+                    # Vertical scroll
+                    y_diff = last_finger_position['y'] - index_tip.y
+                    scroll_delta_y = y_diff * 45
+                    scroll_delta_y = max(min(scroll_delta_y, 30), -30)
+                    
+
+                    if abs(scroll_delta_y) > 1:
+                        canvas.yview_scroll(int(scroll_delta_y), "units")
+                    # Update last finger position
+                    last_finger_position['x'] = index_tip.x
+                    last_finger_position['y'] = index_tip.y
             
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
