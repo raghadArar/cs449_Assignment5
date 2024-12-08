@@ -226,12 +226,12 @@ music_files = {
     "Music 5": "study-music-181044.mp3",
     "Music 6": "winter-music-relaxing-piano-268028.mp3"
 }
-# Tasks Section
-tasks_frame2 = ctk.CTkFrame(scrollable_frame, fg_color="lightgray", corner_radius=10, height=50)
+
+tasks_frame2 = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=10, height=50)
 tasks_frame2.pack(pady=10, padx=10, fill="x")
 
-# Header frame for title and button
-header_frame2 = ctk.CTkFrame(tasks_frame2, fg_color="lightgray", height=40)
+
+header_frame2 = ctk.CTkFrame(tasks_frame2, fg_color="white", height=40)
 header_frame2.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 def change_button_color_music(m):
@@ -338,6 +338,29 @@ def reset_timer():
 def is_finger_extended(hand_landmarks, finger_tip_id, finger_pip_id):
     return hand_landmarks.landmark[finger_tip_id].y < hand_landmarks.landmark[finger_pip_id].y
 
+def get_hand_orientation(hand_landmarks):
+    # Extract key landmarks
+    wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
+    index_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP]
+    pinky_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
+    
+    # Calculate horizontal orientation
+    horizontal_orientation = "neutral"
+    if wrist.x > index_mcp.x and wrist.x < pinky_mcp.x and wrist.y < index_mcp.y:
+        horizontal_orientation = "left"
+    elif wrist.x > index_mcp.x and wrist.x < pinky_mcp.x and wrist.y < index_mcp.y:
+        horizontal_orientation = "right"
+    
+    # Calculate vertical orientation
+    vertical_orientation = "neutral"
+    if wrist.y < index_mcp.y and wrist.y < pinky_mcp.y and pinky_mcp.x < wrist.x:
+        vertical_orientation = "up"
+    elif wrist.y > index_mcp.y and wrist.y > pinky_mcp.y and pinky_mcp.x < wrist.x:
+        vertical_orientation = "down"
+    
+    return horizontal_orientation, vertical_orientation
+
+
 # Initialize OpenCV capture
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -397,9 +420,13 @@ def update_camera_feed():
             ring_extended = is_finger_extended(hand_landmarks, 16, 14)
             pinky_extended = is_finger_extended(hand_landmarks, 20, 18)
 
+            # Calculate hand orientation
+            horizontal_orientation, vertical_orientation = get_hand_orientation(hand_landmarks)
+
+
             # Existing conditions to ensure fingers are extended/folded appropriately
-            if (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active):
-                
+            if (index_extended and middle_extended and ring_extended and not pinky_extended and not gesture_cooldown_active ):
+                print("in horixontal crooolilin rktwrt")
                 # Initialize last positions if not set
                 if last_finger_position_m is None:
                     last_finger_position_m = {
@@ -431,7 +458,7 @@ def update_camera_feed():
                     last_finger_position_m['middle_x'] = middle_tip.x
                     last_finger_position_m['ring_x'] = ring_tip.x
 
-            elif (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active):
+            if (index_extended and middle_extended and not ring_extended and not pinky_extended and not gesture_cooldown_active and (vertical_orientation == "up" or vertical_orientation == "down")):
                  # Ensure fingers are not fully vertical
                     # Initialize last positions if not set
                     if last_finger_position is None:
@@ -446,19 +473,22 @@ def update_camera_feed():
                         y_diff_middle = last_finger_position['middle_y'] - middle_tip.y
                         avg_y_diff = (y_diff_index + y_diff_middle ) / 2
 
-                        scroll_delta_y = avg_y_diff * 20  # Scale factor for scrolling
-                        scroll_delta_y = max(min(scroll_delta_y, 70), -70)
-
                         # Add a movement threshold to avoid unintentional scrolling
                         #print("avg y diff",avg_y_diff)
+                        # Get the current fractional scroll position
+                        current_scroll_position = canvas.yview()[0]
+
                         movement_threshold = 0.4  # Adjusted for the value that appears when not moving
                         if abs(avg_y_diff) < movement_threshold:  # Only scroll if movement is significant
-                            scroll_delta_y = avg_y_diff * 20  # Scale factor for scrolling
-                            scroll_delta_y = max(min(scroll_delta_y, 60), -60)
+                            scroll_delta_y = avg_y_diff * 30  # Scale factor for scrolling
+                            scroll_delta_y = max(min(scroll_delta_y, 65), -65)
 
                             if abs(scroll_delta_y) > 1:
                                 print("in vertical")
-                                canvas.yview_scroll(int(scroll_delta_y), "units")
+                                if scroll_delta_y==-65:
+                                    canvas.yview_scroll(int(scroll_delta_y-current_scroll_position), "units")
+                                else:
+                                    canvas.yview_scroll(int(scroll_delta_y+current_scroll_position), "units")
 
                             # Update last finger positions
                             last_finger_position['index_y'] = index_tip.y
@@ -467,8 +497,8 @@ def update_camera_feed():
             
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
-            pinch_threshold = 0.05
-
+            pinch_threshold = 0.035
+            print("pinch distance",pinch_distance)
             if pinch_distance < pinch_threshold and not gesture_cooldown_active:
                 print("pinched")
                 buttons = [
