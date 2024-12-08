@@ -291,6 +291,7 @@ pause_button.configure(command=lambda: (pause_music(), reset_button_colors_sound
 
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
+
 # Cursor overlay on the main GUI
 cursor_canvas = Canvas(root, bg="grey", highlightthickness=0, width=20, height=20)
 cursor_canvas.place(x=0, y=0)  # Start at the top-left corner
@@ -334,8 +335,9 @@ def reset_timer():
 
 
 # Function to determine if a finger is extended.
-def is_finger_extended(hand_landmarks, finger_tip_id, finger_mcp_id):
-    return hand_landmarks.landmark[finger_tip_id].y < hand_landmarks.landmark[finger_mcp_id].y
+def is_finger_extended(hand_landmarks, finger_tip_id, finger_pip_id):
+    return hand_landmarks.landmark[finger_tip_id].y < hand_landmarks.landmark[finger_pip_id].y
+
 # Initialize OpenCV capture
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -347,18 +349,7 @@ last_invoked_button = None
 gesture_cooldown_active = False
 last_finger_position = None
 last_finger_position_m = None
-# Function to initialize finger positions if not set
-def initialize_finger_position(last_pos, current_tip):
-    if last_pos is None:
-        return {'x': current_tip.x, 'y': current_tip.y}
-    return last_pos
 
-# Function to calculate scroll delta
-def calculate_scroll_delta(current, last, scale=45, clamp=30):
-    diff = current - last
-    delta = diff * scale
-    delta = max(min(delta, clamp), -clamp)
-    return delta
 
 def update_camera_feed():
     """Update the camera feed and process gestures in the background."""
@@ -428,7 +419,7 @@ def update_camera_feed():
                     scroll_delta_x = avg_x_diff * 40  # Scale factor for scrolling
                     scroll_delta_x = max(min(scroll_delta_x, 60), -60)
 
-                    print("avg x diff",avg_x_diff)
+                    #print("avg x diff",avg_x_diff)
                     movement_threshold_min = 0.02  # Minimum movement threshold
                     movement_threshold_max = 0.3   # Maximum movement threshold
                     if movement_threshold_min < abs(avg_x_diff) < movement_threshold_max:
@@ -459,7 +450,7 @@ def update_camera_feed():
                         scroll_delta_y = max(min(scroll_delta_y, 70), -70)
 
                         # Add a movement threshold to avoid unintentional scrolling
-                        print("avg y diff",avg_y_diff)
+                        #print("avg y diff",avg_y_diff)
                         movement_threshold = 0.4  # Adjusted for the value that appears when not moving
                         if abs(avg_y_diff) < movement_threshold:  # Only scroll if movement is significant
                             scroll_delta_y = avg_y_diff * 20  # Scale factor for scrolling
