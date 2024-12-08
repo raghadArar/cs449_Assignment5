@@ -21,16 +21,17 @@ root.configure(bg="grey")
 
 # Function to change the color of the buttons when clicked
 def change_button_color(button):
-    button.configure(fg_color="lightskyblue")  # Change color of clicked button
+    button.configure(fg_color="lightskyblue")  
 
 def reset_button_colors():
-    # Reset the color of all buttons back to default color
+    # Reset the color of all timer buttons back to default color
     start_button.configure(fg_color="steelblue")
     pause_timer_button.configure(fg_color="steelblue")
     reset_button.configure(fg_color="steelblue")
 
 def reset_button_colors_sound():
-    play_button.configure(fg_color="steelblue")  # Resume playback
+    # Reset the color of all music buttons back to default color
+    play_button.configure(fg_color="steelblue")  
     pause_button.configure(fg_color="steelblue")
 
 # Scrollable container
@@ -188,7 +189,6 @@ spacer = ctk.CTkFrame(music_frame, fg_color="lightgray", height=5)
 spacer.pack(fill="x", pady=5)
 
 # Music List Section
-
 music_canvas = Canvas(music_frame, height=200, bg="lightgray", highlightthickness=0)
 music_canvas.pack(fill="x")
 
@@ -219,19 +219,18 @@ header_frame2 = ctk.CTkFrame(tasks_frame2, fg_color="white", height=40)
 header_frame2.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 def change_button_color_music(m):
-    # Reset all button colors to default
+    # Reset all music playlist button colors to default
     for btn in music_buttons:
         if btn.cget("text") == m:
             btn.configure(fg_color="lightskyblue")
         else:
             btn.configure(fg_color="steelblue")  # Reset to default color
-    # Change the selected button color
     
 
 # Function to play selected music
 def play_music(music_name):
     if music_name in music_files:
-        # pygame.mixer.music.stop()  # Stop any currently playing music
+       
         change_button_color_music(music_name)
         reset_button_colors_sound()
         change_button_color(play_button)
@@ -271,7 +270,6 @@ for music in music_options:
 # Update Sound Controls Section
 play_button.configure(command=lambda: (resume_music(), reset_button_colors_sound(),change_button_color(play_button)))  # Resume playback
 pause_button.configure(command=lambda: (pause_music(), reset_button_colors_sound(),change_button_color(pause_button)))  # Pause playback
-# stop_button.configure(command=lambda: stop_music())  # Stop playback
 
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
