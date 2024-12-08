@@ -76,7 +76,7 @@ timer_circle = timer_canvas.create_oval(
 )
 timer_text = timer_canvas.create_text(
     center_x, center_y - 20, text=f"{default_session_time}:00",
-    font=("Helvetica", 38, "bold"), fill="white"
+    font=("Helvetica", 45, "bold"), fill="white"
 )
 status_text = timer_canvas.create_text(
     center_x, center_y + 50, text="Paused", font=("Helvetica", 20), fill="gold"
@@ -474,21 +474,22 @@ def update_camera_feed():
                         avg_y_diff = (y_diff_index + y_diff_middle ) / 2
 
                         # Add a movement threshold to avoid unintentional scrolling
-                        #print("avg y diff",avg_y_diff)
+                        print("avg y diff",avg_y_diff)
                         # Get the current fractional scroll position
                         current_scroll_position = canvas.yview()[0]
 
-                        movement_threshold = 0.4  # Adjusted for the value that appears when not moving
+                        movement_threshold = 0.3  # Adjusted for the value that appears when not moving
                         if abs(avg_y_diff) < movement_threshold:  # Only scroll if movement is significant
-                            scroll_delta_y = avg_y_diff * 30  # Scale factor for scrolling
-                            scroll_delta_y = max(min(scroll_delta_y, 65), -65)
+                            scroll_delta_y = avg_y_diff * 50  # Scale factor for scrolling
+                            scroll_delta_y = max(min(scroll_delta_y, 60), -60)
 
                             if abs(scroll_delta_y) > 1:
                                 print("in vertical")
-                                if scroll_delta_y==-65:
-                                    canvas.yview_scroll(int(scroll_delta_y-current_scroll_position), "units")
-                                else:
-                                    canvas.yview_scroll(int(scroll_delta_y+current_scroll_position), "units")
+                                # if scroll_delta_y==-65:
+                                #     canvas.yview_scroll(int(scroll_delta_y-current_scroll_position), "units")
+                                # else:
+                                #     canvas.yview_scroll(int(scroll_delta_y+current_scroll_position), "units")
+                                canvas.yview_scroll(int(scroll_delta_y), "units")
 
                             # Update last finger positions
                             last_finger_position['index_y'] = index_tip.y
@@ -498,7 +499,7 @@ def update_camera_feed():
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.035
-            print("pinch distance",pinch_distance)
+            #print("pinch distance",pinch_distance)
             if pinch_distance < pinch_threshold and not gesture_cooldown_active:
                 print("pinched")
                 buttons = [
