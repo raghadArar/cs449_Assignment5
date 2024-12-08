@@ -1,11 +1,9 @@
-#cannot see camera but camera is on, the pause button dont work and the reset button works as pause
+# importing libraries
 import customtkinter as ctk
 from tkinter import Canvas, Scrollbar, HORIZONTAL, VERTICAL
 import cv2
 import mediapipe as mp
-import threading
 import time
-from PIL import Image, ImageTk
 import pygame
 
 # Initialize MediaPipe hand detector
@@ -25,13 +23,14 @@ def change_button_color(button):
     button.configure(fg_color="lightskyblue")  # Change color of clicked button
 
 def reset_button_colors():
-    # Reset the color of all buttons back to default color
+    # Reset the color of all timer buttons back to default color
     start_button.configure(fg_color="steelblue")
     pause_timer_button.configure(fg_color="steelblue")
     reset_button.configure(fg_color="steelblue")
 
 def reset_button_colors_sound():
-    play_button.configure(fg_color="steelblue")  # Resume playback
+    # Reset the color of all music buttons back to default color
+    play_button.configure(fg_color="steelblue")  
     pause_button.configure(fg_color="steelblue")
 
 # Scrollable container
@@ -81,19 +80,6 @@ timer_text = timer_canvas.create_text(
 status_text = timer_canvas.create_text(
     center_x, center_y + 50, text="Paused", font=("Helvetica", 20), fill="gold"
 )
-
-# Timer Controls
-# controls_frame = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=5)
-# controls_frame.pack(pady=10)
-
-# start_button = ctk.CTkButton(controls_frame, text="▶ Start",width=100,height=50, command=lambda: start_timer())
-# start_button.pack(side="left", padx=5)
-
-# pause_button = ctk.CTkButton(controls_frame, text="⏸ Pause", width=100,height=50,command=lambda: pause_timer())
-# pause_button.pack(side="left", padx=5)
-
-# reset_button = ctk.CTkButton(controls_frame, text="⏹ Reset", width=100,height=50,command=lambda: reset_timer())
-# reset_button.pack(side="left", padx=5)
 
 # Function to log timer control actions
 def log_timer_action(action):
@@ -195,15 +181,12 @@ play_button.pack(side="left", padx=5)
 pause_button = ctk.CTkButton(sound_controls, text="⏸ Pause", width=120, height=50, font=("Helvetica", 16),fg_color="steelblue",command=lambda: print("Pause clicked"))
 pause_button.pack(side="left", padx=5)
 
-# stop_button = ctk.CTkButton(sound_controls, text="⏹ Stop", command=lambda: print("Stop clicked"))
-# stop_button.pack(side="left", padx=5)
 
 # Spacer to add space between controls and the music list
 spacer = ctk.CTkFrame(music_frame, fg_color="lightgray", height=5)
 spacer.pack(fill="x", pady=5)
 
 # Music List Section
-
 music_canvas = Canvas(music_frame, height=200, bg="lightgray", highlightthickness=0)
 music_canvas.pack(fill="x")
 
@@ -227,22 +210,19 @@ music_files = {
     "Music 6": "adriftamonginfinitestars.mp3"
 }
 
+#adding extra padding on the bottom of the page
 tasks_frame2 = ctk.CTkFrame(scrollable_frame, fg_color="white", corner_radius=10, height=50)
 tasks_frame2.pack(pady=10, padx=10, fill="x")
-
-
 header_frame2 = ctk.CTkFrame(tasks_frame2, fg_color="white", height=40)
 header_frame2.pack(fill="x", padx=40, pady=5, ipady=5)  
 
 def change_button_color_music(m):
-    # Reset all button colors to default
+    # Reset all music playlist button colors to default
     for btn in music_buttons:
         if btn.cget("text") == m:
             btn.configure(fg_color="lightskyblue")
         else:
             btn.configure(fg_color="steelblue")  # Reset to default color
-    # Change the selected button color
-    
 
 # Function to play selected music
 def play_music(music_name):
@@ -287,7 +267,6 @@ for music in music_options:
 # Update Sound Controls Section
 play_button.configure(command=lambda: (resume_music(), reset_button_colors_sound(),change_button_color(play_button)))  # Resume playback
 pause_button.configure(command=lambda: (pause_music(), reset_button_colors_sound(),change_button_color(pause_button)))  # Pause playback
-# stop_button.configure(command=lambda: stop_music())  # Stop playback
 
 music_inner_frame.update_idletasks()
 music_canvas.configure(scrollregion=music_canvas.bbox("all"))
@@ -421,7 +400,7 @@ def update_camera_feed():
             pinky_extended = is_finger_extended(hand_landmarks, 20, 18)
 
             # Calculate hand orientation
-            horizontal_orientation, vertical_orientation = get_hand_orientation(hand_landmarks)
+            vertical_orientation = get_hand_orientation(hand_landmarks)
 
 
             # Existing conditions to ensure fingers are extended/folded appropriately
@@ -474,21 +453,14 @@ def update_camera_feed():
                         avg_y_diff = (y_diff_index + y_diff_middle ) / 2
 
                         # Add a movement threshold to avoid unintentional scrolling
-                        print("avg y diff",avg_y_diff)
-                        # Get the current fractional scroll position
-                        current_scroll_position = canvas.yview()[0]
-
+                        #print("avg y diff",avg_y_diff)
                         movement_threshold = 0.3  # Adjusted for the value that appears when not moving
                         if abs(avg_y_diff) < movement_threshold:  # Only scroll if movement is significant
                             scroll_delta_y = avg_y_diff * 50  # Scale factor for scrolling
                             scroll_delta_y = max(min(scroll_delta_y, 60), -60)
 
                             if abs(scroll_delta_y) > 1:
-                                print("in vertical")
-                                # if scroll_delta_y==-65:
-                                #     canvas.yview_scroll(int(scroll_delta_y-current_scroll_position), "units")
-                                # else:
-                                #     canvas.yview_scroll(int(scroll_delta_y+current_scroll_position), "units")
+                                #print("in vertical")
                                 canvas.yview_scroll(int(scroll_delta_y), "units")
 
                             # Update last finger positions
@@ -499,6 +471,7 @@ def update_camera_feed():
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
             pinch_threshold = 0.035
+            
             #print("pinch distance",pinch_distance)
             if pinch_distance < pinch_threshold and not gesture_cooldown_active:
                 print("pinched")
