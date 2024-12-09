@@ -476,7 +476,7 @@ def update_camera_feed():
             
             # Gesture: Pinch Detection
             pinch_distance = ((thumb_tip.x - index_tip.x) ** 2 + (thumb_tip.y - index_tip.y) ** 2) ** 0.5
-            pinch_threshold = 0.035
+            pinch_threshold = 0.039
             #print("pinch distance",pinch_distance)
             if pinch_distance < pinch_threshold and not gesture_cooldown_active:
                 print("pinched")
