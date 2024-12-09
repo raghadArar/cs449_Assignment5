@@ -11,7 +11,7 @@ Features and Gestures:<br>
 - Horizontal Scrolling: Move index, middle, and ring fingers left/right to scroll playlists.<br>
 - Pinch Gesture: Pinch thumb and index finger to simulate button clicks.
 
-  Demonstartion:
+[Watch the demo on YouTube](https://www.youtube.com/watch?v=your_video_id)
 
-  <iframe width="560" height="315" src="https://youtu.be/80UWi0GvX50" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 
